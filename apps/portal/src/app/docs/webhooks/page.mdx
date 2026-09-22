@@ -1,0 +1,49 @@
+# Webhooks
+
+Register an endpoint under **Webhooks** in your application dashboard. Whenever
+a payment reaches a terminal status, AyitiPay POSTs an event to every active
+endpoint on that application.
+
+```json
+{
+  "id": "evt_...",
+  "type": "payment.succeeded",
+  "createdAt": "2026-09-21T12:00:05.000Z",
+  "data": {
+    "transaction": { "...": "same shape as GET /v1/payments/:id" }
+  }
+}
+```
+
+## Verifying signatures
+
+Each delivery includes an `X-Webhook-Signature` header:
+
+```
+X-Webhook-Signature: t=1758470400,v1=5257a869...
+```
+
+Recompute the signature over the raw request body using your endpoint's secret
+(shown once, at creation, in the dashboard) and compare with a constant-time
+comparison:
+
+```js
+const crypto = require("crypto");
+
+function isValid(secret, rawBody, header) {
+  const [tPart, vPart] = header.split(",");
+  const timestamp = tPart.split("=")[1];
+  const signature = vPart.split("=")[1];
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}
+```
+
+## Retries
+
+Failed deliveries (non-2xx or a timeout) are retried with backoff: 1m, 5m, 30m,
+2h, then 12h, up to 6 attempts, after which the delivery is marked `EXHAUSTED`.
+You can manually redeliver any delivery from the dashboard.

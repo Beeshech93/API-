@@ -1,0 +1,65 @@
+# Payments
+
+## Create a payment
+
+```bash
+POST /v1/payments
+```
+
+```json
+{
+  "provider": "MONCASH",
+  "amount": 500,
+  "currency": "HTG",
+  "reference": "order_123",
+  "description": "T-shirt order"
+}
+```
+
+Send an `Idempotency-Key` header with a client-generated UUID to safely retry
+a request without creating a duplicate payment.
+
+Response:
+
+```json
+{
+  "id": "d290f1ee-...",
+  "status": "PENDING",
+  "provider": "MONCASH",
+  "amount": 500,
+  "currency": "HTG",
+  "reference": "order_123",
+  "checkoutUrl": "https://...",
+  "mode": "test",
+  "createdAt": "2026-09-21T12:00:00.000Z"
+}
+```
+
+## Check a payment's status
+
+```bash
+GET /v1/payments/:id
+```
+
+## List payments
+
+```bash
+GET /v1/payments?status=SUCCEEDED&provider=MONCASH
+```
+
+## Simulate a payment (sandbox only)
+
+With a **TEST** key, drive a payment to a terminal state directly, without
+waiting for a real provider callback:
+
+```bash
+POST /v1/sandbox/payments/:id/simulate
+```
+
+```json
+{ "outcome": "success" }
+```
+
+This fires the same webhook delivery pipeline a real settlement would.
+
+Try the whole flow interactively in the [console](/docs/console).

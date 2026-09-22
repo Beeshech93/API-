@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PaymentProvider {
+  MONCASH
+  NATCASH
+}
+
+enum Currency {
+  HTG
+  USD
+}
+
+enum KeyMode {
+  TEST
+  LIVE
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  EXHAUSTED
+}
+
+model Developer {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  applications Application[]
+
+  @@map("developers")
+}
+
+model Application {
+  id          String   @id @default(uuid())
+  developerId String   @map("developer_id")
+  name        String
+  feeBps      Int      @default(150) @map("fee_bps")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  developer           Developer            @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  apiKeys              ApiKey[]
+  transactions          Transaction[]
+  webhookEndpoints     WebhookEndpoint[]
+  ledgerEntries        LedgerEntry[]
+  providerCredentials  ProviderCredential[]
+
+  @@index([developerId])
+  @@map("applications")
+}
+
+model ApiKey {
+  id            String    @id @default(uuid())
+  applicationId String    @map("application_id")
+  mode          KeyMode
+  label         String?
+  keyPrefix     String    @unique @map("key_prefix")
+  hashedSecret  String    @map("hashed_secret")
+  lastUsedAt    DateTime? @map("last_used_at")
+  revokedAt     DateTime? @map("revoked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("api_keys")
+}
+
+model ProviderCredential {
+  id               String          @id @default(uuid())
+  applicationId    String          @map("application_id")
+  provider         PaymentProvider
+  baseUrl          String?         @map("base_url")
+  encryptedPayload String          @map("encrypted_payload")
+  iv               String
+  authTag          String          @map("auth_tag")
+  active           Boolean         @default(true)
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, provider])
+  @@map("provider_credentials")
+}
+
+model Transaction {
+  id                String            @id @default(uuid())
+  applicationId     String            @map("application_id")
+  apiKeyId          String            @map("api_key_id")
+  mode              KeyMode
+  provider          PaymentProvider
+  status            TransactionStatus @default(PENDING)
+  amount            Decimal           @db.Decimal(12, 2)
+  currency          Currency
+  reference         String
+  description       String?
+  idempotencyKey    String?           @map("idempotency_key")
+  providerPaymentId String?           @map("provider_payment_id")
+  checkoutUrl       String?           @map("checkout_url")
+  metadata          Json?
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  application       Application        @relation(fields: [applicationId], references: [id])
+  events            TransactionEvent[]
+  webhookDeliveries WebhookDelivery[]
+  ledgerEntry       LedgerEntry?
+
+  @@unique([applicationId, idempotencyKey])
+  @@index([applicationId])
+  @@index([providerPaymentId])
+  @@map("transactions")
+}
+
+model TransactionEvent {
+  id            String            @id @default(uuid())
+  transactionId String            @map("transaction_id")
+  status        TransactionStatus
+  rawPayload    Json              @map("raw_payload")
+  source        String
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_events")
+}
+
+model WebhookEndpoint {
+  id            String   @id @default(uuid())
+  applicationId String   @map("application_id")
+  url           String
+  secret        String
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  application Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+
+  @@index([applicationId])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id                String                @id @default(uuid())
+  webhookEndpointId String                @map("webhook_endpoint_id")
+  transactionId     String                @map("transaction_id")
+  eventType         String                @map("event_type")
+  payload           Json
+  status            WebhookDeliveryStatus @default(PENDING)
+  attempts          Int                   @default(0)
+  responseStatus    Int?                  @map("response_status")
+  responseBody      String?               @map("response_body")
+  nextAttemptAt     DateTime              @default(now()) @map("next_attempt_at")
+  lastAttemptAt     DateTime?             @map("last_attempt_at")
+  createdAt         DateTime              @default(now()) @map("created_at")
+
+  webhookEndpoint WebhookEndpoint @relation(fields: [webhookEndpointId], references: [id], onDelete: Cascade)
+  transaction     Transaction     @relation(fields: [transactionId], references: [id])
+
+  @@index([status, nextAttemptAt])
+  @@map("webhook_deliveries")
+}
+
+model LedgerEntry {
+  id            String   @id @default(uuid())
+  applicationId String   @map("application_id")
+  transactionId String   @unique @map("transaction_id")
+  feeAmount     Decimal  @db.Decimal(12, 2) @map("fee_amount")
+  feeCurrency   Currency @map("fee_currency")
+  feeBps        Int      @map("fee_bps")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  application Application @relation(fields: [applicationId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+
+  @@index([applicationId])
+  @@map("ledger_entries")
+}
