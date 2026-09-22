@@ -27,8 +27,8 @@ export const monCashAdapter: PaymentProviderAdapter = {
     );
   },
 
-  async getPaymentStatus(providerPaymentId: string, credentials: DecryptedCredentials | null) {
-    if (!credentials) return mock.getMockPaymentStatus(providerPaymentId);
+  async getPaymentStatus(_providerPaymentId: string, credentials: DecryptedCredentials | null) {
+    if (!credentials) return mock.getMockPaymentStatus();
     throw AppError.badRequest("MonCash live integration is not implemented yet.", "PROVIDER_NOT_CONFIGURED");
   },
 

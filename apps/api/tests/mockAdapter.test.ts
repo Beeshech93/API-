@@ -17,7 +17,11 @@ describe.each([
     const pending = await adapter.getPaymentStatus(created.providerPaymentId, null);
     expect(pending.status).toBe("PENDING");
 
-    const event = mock.settleMockPayment(created.providerPaymentId, "success");
+    // The adapter is stateless by design (see mockTransport.ts) — the caller
+    // (payment.service.ts) always supplies amount/currency from its own
+    // Transaction row, since a real "create" and "simulate" call may not
+    // land on the same process/instance in production.
+    const event = mock.settleMockPayment(created.providerPaymentId, 500, "HTG", "success");
     expect(event.status).toBe("SUCCEEDED");
 
     const { body, signature } = mock.buildSignedMockWebhook(event);
@@ -27,9 +31,6 @@ describe.each([
     const parsed = adapter.parseWebhookPayload(JSON.parse(body));
     expect(parsed.providerPaymentId).toBe(created.providerPaymentId);
     expect(parsed.status).toBe("SUCCEEDED");
-
-    const settled = await adapter.getPaymentStatus(created.providerPaymentId, null);
-    expect(settled.status).toBe("SUCCEEDED");
   });
 
   it("throws PROVIDER_NOT_CONFIGURED when called with live credentials (unimplemented)", async () => {

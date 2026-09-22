@@ -24,8 +24,8 @@ export const natCashAdapter: PaymentProviderAdapter = {
     );
   },
 
-  async getPaymentStatus(providerPaymentId: string, credentials: DecryptedCredentials | null) {
-    if (!credentials) return mock.getMockPaymentStatus(providerPaymentId);
+  async getPaymentStatus(_providerPaymentId: string, credentials: DecryptedCredentials | null) {
+    if (!credentials) return mock.getMockPaymentStatus();
     throw AppError.badRequest("NatCash live integration is not implemented yet.", "PROVIDER_NOT_CONFIGURED");
   },
 

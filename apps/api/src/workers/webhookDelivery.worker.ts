@@ -69,8 +69,13 @@ async function failDelivery(id: string, previousAttempts: number, responseStatus
 
 let polling = false;
 
-async function pollOnce() {
-  if (polling) return;
+// One pass over due deliveries. Exported so it can run either from the local
+// setInterval loop below (`startWebhookDeliveryWorker`, used by `npm run dev`
+// / a long-running host) or from a single serverless invocation triggered by
+// Vercel Cron (see `routes/internal.cron.routes.ts`) — Vercel functions don't
+// keep a process alive between requests, so `setInterval` never fires there.
+export async function pollOnce(): Promise<{ processed: number }> {
+  if (polling) return { processed: 0 };
   polling = true;
   try {
     const due = await prisma.webhookDelivery.findMany({
@@ -80,6 +85,7 @@ async function pollOnce() {
     for (const delivery of due) {
       await deliverOne(delivery.id);
     }
+    return { processed: due.length };
   } finally {
     polling = false;
   }

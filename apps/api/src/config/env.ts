@@ -18,6 +18,11 @@ export const env = {
   },
   credentialsEncryptionKey: process.env.CREDENTIALS_ENCRYPTION_KEY ?? "",
   portalAppUrl: process.env.PORTAL_APP_URL ?? "http://localhost:3000",
+  // Vercel automatically sends this as a Bearer token when it invokes a
+  // cron-scheduled route (see vercel.json) — verified in
+  // internal.cron.routes.ts so the poll endpoint can't be triggered by
+  // anyone else. Empty in local dev, where the setInterval worker runs instead.
+  cronSecret: process.env.CRON_SECRET ?? "",
   platformDefaultFeeBps: Number(process.env.PLATFORM_DEFAULT_FEE_BPS ?? 150),
   webhook: {
     maxAttempts: Number(process.env.WEBHOOK_MAX_ATTEMPTS ?? 6),

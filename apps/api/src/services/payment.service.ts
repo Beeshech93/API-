@@ -152,6 +152,11 @@ export async function simulatePayment(
     throw AppError.badRequest("This transaction cannot be simulated.", "NOT_SIMULATABLE");
   }
 
-  const event = settleMockPayment(transaction.providerPaymentId, outcome);
+  const event = settleMockPayment(
+    transaction.providerPaymentId,
+    Number(transaction.amount),
+    transaction.currency,
+    outcome
+  );
   return applyWebhookEvent(transaction, event, "sandbox_simulate");
 }
