@@ -25,6 +25,8 @@ export const env = {
   },
   portalAppUrl: process.env.PORTAL_APP_URL ?? "http://localhost:3000",
   cronSecret: process.env.CRON_SECRET ?? "",
+  // 32-byte key (base64 or hex) that encrypts secrets stored in the database.
+  secretsKey: process.env.CREDENTIALS_ENCRYPTION_KEY ?? "",
   trialDays: Number(process.env.TRIAL_DAYS ?? 14),
   // Display name is shown to administrators only; it lives here (not in code)
   // so the public repository stays provider-neutral.
@@ -42,7 +44,3 @@ export const env = {
   testRateLimitPerMinute: Number(process.env.RATE_LIMIT_TEST_PER_MIN ?? 60),
   ipRateLimitPerMinute: Number(process.env.RATE_LIMIT_IP_PER_MIN ?? 600),
 } as const;
-
-export function isProviderConfigured(): boolean {
-  return Boolean(env.provider.apiUrl && env.provider.apiKey && env.provider.secretKey);
-}

@@ -8,10 +8,12 @@ import { clientIp } from "@/utils/ip";
 import { prisma } from "@/utils/prisma";
 import { tbl } from "@/utils/sql";
 import { requireAdmin, requireUser } from "@/middleware/auth.jwt";
+import { ipRateLimit } from "@/middleware/rateLimit";
 import { audit } from "@/services/audit.service";
 import * as billing from "@/services/billing.service";
 import { getFeeConfig, saveFeeConfig } from "@/services/fee.service";
 import { checkProviders, listProviders } from "@/services/provider.service";
+import { clearConfig, getConfigSummary, saveConfig } from "@/services/providerConfig.service";
 import { getUsage } from "@/services/usage.service";
 import { signupSchema } from "@/validators/schemas";
 
@@ -189,6 +191,22 @@ adminRouter.put("/settings/fees", asyncHandler(async (req, res) => {
 // ---- Providers ---------------------------------------------------
 
 adminRouter.get("/providers", asyncHandler(async (_req, res) => res.json({ success: true, providers: await listProviders() })));
+// Manual connection: an administrator enters the provider credentials here.
+// They are encrypted at rest and write-only — responses only ever contain
+// masked values (last 4 characters), never a secret.
+const providerConfigSchema = z.object({
+  name: z.string().trim().max(60).optional(),
+  apiUrl: z.string().trim().url().max(300).optional(),
+  apiKey: z.string().max(500).optional(),
+  secretKey: z.string().max(500).optional(),
+  webhookSecret: z.string().max(500).optional(),
+});
+adminRouter.get("/providers/config", asyncHandler(async (_req, res) => res.json({ success: true, config: await getConfigSummary() })));
+adminRouter.put("/providers/config", ipRateLimit(20, "admin-config"), asyncHandler(async (req, res) => {
+  res.json({ success: true, config: await saveConfig(providerConfigSchema.parse(req.body), actor(req)) });
+}));
+adminRouter.delete("/providers/config", asyncHandler(async (req, res) => res.json({ success: true, config: await clearConfig(actor(req)) })));
+
 // "Test Connection": probes the provider from the backend; secrets never leave it.
 adminRouter.post("/providers/check", asyncHandler(async (_req, res) => res.json({ success: true, providers: await checkProviders() })));
 

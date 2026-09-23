@@ -1,3 +1,7 @@
+jest.mock("@/services/providerConfig.service", () => ({
+  getEffectiveConfig: async () => ({ configured: false, name: "provider", apiUrl: "" }),
+}));
+
 import { SandboxProvider, SANDBOX_TEST_NUMBERS } from "@/providers/sandbox.provider";
 import { LiveProvider } from "@/providers/live.provider";
 import { getProvider } from "@/providers/provider.factory";
