@@ -1,0 +1,65 @@
+# Pagos
+
+## Crear un pago
+
+```bash
+POST /v1/payments
+```
+
+```json
+{
+  "provider": "MONCASH",
+  "amount": 500,
+  "currency": "HTG",
+  "reference": "order_123",
+  "description": "Pedido de camiseta"
+}
+```
+
+Envía un encabezado `Idempotency-Key` con un UUID generado por tu cliente para reintentar
+una petición de forma segura sin crear un pago duplicado.
+
+Respuesta:
+
+```json
+{
+  "id": "d290f1ee-...",
+  "status": "PENDING",
+  "provider": "MONCASH",
+  "amount": 500,
+  "currency": "HTG",
+  "reference": "order_123",
+  "checkoutUrl": "https://...",
+  "mode": "TEST",
+  "createdAt": "2026-09-21T12:00:00.000Z"
+}
+```
+
+## Consultar el estado de un pago
+
+```bash
+GET /v1/payments/:id
+```
+
+## Listar pagos
+
+```bash
+GET /v1/payments?status=SUCCEEDED&provider=MONCASH
+```
+
+## Simular un pago (solo sandbox)
+
+Con una clave de **PRUEBA** puedes llevar un pago a un estado final directamente, sin
+esperar el callback de un proveedor real:
+
+```bash
+POST /v1/sandbox/payments/:id/simulate
+```
+
+```json
+{ "outcome": "success" }
+```
+
+Esto activa el mismo flujo de entrega de webhooks que una liquidación real.
+
+Prueba todo el flujo de forma interactiva en la [consola](/docs/console).

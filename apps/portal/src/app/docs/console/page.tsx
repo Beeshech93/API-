@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { PaymentProvider, TransactionDto } from "@ayitipay/shared";
-import { ApiError, callPublicApi } from "@/lib/apiClient";
+import { callPublicApi } from "@/lib/apiClient";
+import { useErrorMessage, useT } from "@/lib/i18n";
 
 export default function ConsolePage() {
+  const t = useT();
+  const errorMessage = useErrorMessage();
   const [apiKey, setApiKey] = useState("");
   const [provider, setProvider] = useState<PaymentProvider>("MONCASH");
   const [amount, setAmount] = useState(500);
@@ -22,7 +25,7 @@ export default function ConsolePage() {
       });
       setTransaction(tx);
     } catch (err) {
-      setError(err instanceof ApiError ? `${err.code}: ${err.message}` : "Request failed.");
+      setError(errorMessage(err, "con.failed"));
     } finally {
       setBusy(false);
     }
@@ -39,7 +42,7 @@ export default function ConsolePage() {
       });
       setTransaction(tx);
     } catch (err) {
-      setError(err instanceof ApiError ? `${err.code}: ${err.message}` : "Request failed.");
+      setError(errorMessage(err, "con.failed"));
     } finally {
       setBusy(false);
     }
@@ -53,15 +56,12 @@ export default function ConsolePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-navy mb-2">Try it</h1>
-      <p className="text-slate-600 mb-6">
-        Paste one of your application&apos;s <strong>TEST</strong> API keys — this calls the real API in
-        sandbox mode, exactly like your own integration would.
-      </p>
+      <h1 className="text-2xl font-bold text-navy mb-2">{t("con.title")}</h1>
+      <p className="text-slate-600 mb-6">{t("con.intro")}</p>
 
       <div className="space-y-3 bg-white border border-slate-200 rounded-lg p-5 mb-6">
         <label className="block text-sm">
-          <span className="block text-slate-600 mb-1">Test API key</span>
+          <span className="block text-slate-600 mb-1">{t("con.key")}</span>
           <input
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
@@ -71,7 +71,7 @@ export default function ConsolePage() {
         </label>
         <div className="flex gap-3">
           <label className="text-sm">
-            <span className="block text-slate-600 mb-1">Provider</span>
+            <span className="block text-slate-600 mb-1">{t("con.provider")}</span>
             <select
               value={provider}
               onChange={(e) => setProvider(e.target.value as PaymentProvider)}
@@ -82,7 +82,7 @@ export default function ConsolePage() {
             </select>
           </label>
           <label className="text-sm">
-            <span className="block text-slate-600 mb-1">Amount (HTG)</span>
+            <span className="block text-slate-600 mb-1">{t("con.amount")}</span>
             <input
               type="number"
               value={amount}
@@ -96,7 +96,7 @@ export default function ConsolePage() {
           disabled={!apiKey || busy}
           className="bg-navy text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
         >
-          Create payment
+          {t("con.create")}
         </button>
       </div>
 
@@ -115,17 +115,17 @@ export default function ConsolePage() {
             disabled={busy}
             className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
           >
-            Simulate success
+            {t("con.success")}
           </button>
           <button
             onClick={() => simulate("failure")}
             disabled={busy}
             className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
           >
-            Simulate failure
+            {t("con.failure")}
           </button>
           <button onClick={refreshStatus} className="border border-slate-300 px-4 py-2 rounded-lg text-sm">
-            Refresh status
+            {t("con.refresh")}
           </button>
         </div>
       )}

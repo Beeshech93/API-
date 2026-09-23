@@ -6,9 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthProvider";
 import { callPortalApi } from "@/lib/apiClient";
 import { Application } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { developer, loading, logout } = useAuth();
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const [applications, setApplications] = useState<Application[]>([]);
@@ -43,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   if (loading || !developer) {
-    return <div className="max-w-6xl mx-auto px-6 py-16 text-slate-500">Loading…</div>;
+    return <div className="max-w-6xl mx-auto px-6 py-16 text-slate-500">{t("dash.loading")}</div>;
   }
 
   return (
@@ -62,13 +64,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {app.name}
             </Link>
           ))}
-          {applications.length === 0 && <p className="text-sm text-slate-400">No applications yet.</p>}
+          {applications.length === 0 && <p className="text-sm text-slate-400">{t("dash.noApps")}</p>}
         </nav>
         <form onSubmit={createApplication} className="space-y-2">
           <input
             value={newAppName}
             onChange={(e) => setNewAppName(e.target.value)}
-            placeholder="New application name"
+            placeholder={t("dash.newAppPlaceholder")}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
           />
           <button
@@ -76,11 +78,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             disabled={creating}
             className="w-full bg-lime text-navy font-semibold py-2 rounded-lg text-sm disabled:opacity-50"
           >
-            {creating ? "Creating…" : "+ New application"}
+            {creating ? t("dash.creating") : t("dash.newApp")}
           </button>
         </form>
         <button onClick={logout} className="mt-8 text-sm text-slate-500 underline">
-          Sign out
+          {t("dash.signOut")}
         </button>
       </aside>
       <div className="flex-1 min-w-0">{children}</div>

@@ -1,0 +1,19 @@
+# Errores
+
+Todos los errores comparten un mismo formato:
+
+```json
+{ "error": { "code": "INVALID_API_KEY", "message": "Invalid API key." } }
+```
+
+Usa el campo `code` (estable) en tu código; el `message` está en inglés y puede cambiar.
+
+| Estado HTTP | Código | Significado |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | El cuerpo de la petición no pasó la validación |
+| 400 | `PROVIDER_NOT_CONFIGURED` | No hay credenciales activas para este proveedor (solo claves de PRODUCCIÓN) |
+| 401 | `INVALID_API_KEY` | Clave de API ausente, mal formada o revocada |
+| 403 | `MODE_NOT_ALLOWED` | p. ej., llamar a un endpoint solo de sandbox con una clave de PRODUCCIÓN |
+| 404 | `PAYMENT_NOT_FOUND` | No existe un pago con ese id en esta aplicación |
+| 429 | `RATE_LIMITED` | Demasiadas peticiones; revisa `Retry-After` |
+| 501 | `REFUND_NOT_SUPPORTED` | Los reembolsos aún no están disponibles para este proveedor |

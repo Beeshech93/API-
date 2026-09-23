@@ -1,29 +1,27 @@
+"use client";
+
 import Link from "next/link";
+import { useT } from "@/lib/i18n";
 
 export default function HomePage() {
+  const t = useT();
   return (
     <div className="max-w-6xl mx-auto px-6 py-24 text-center">
-      <h1 className="text-5xl font-extrabold text-navy mb-6">
-        One API for MonCash &amp; NatCash
-      </h1>
-      <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10">
-        AyitiPay gives developers a single, unified way to accept mobile money payments
-        in Haiti — connect your own MonCash and NatCash merchant accounts, get a
-        sandbox in seconds, and go live when you&apos;re ready.
-      </p>
-      <div className="flex gap-4 justify-center">
+      <h1 className="text-5xl font-extrabold text-navy mb-6">{t("home.title")}</h1>
+      <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10">{t("home.body")}</p>
+      <div className="flex gap-4 justify-center flex-wrap">
         <Link href="/signup" className="bg-navy text-white px-6 py-3 rounded-full font-semibold">
-          Get started free
+          {t("home.cta1")}
         </Link>
         <Link href="/docs" className="border border-navy text-navy px-6 py-3 rounded-full font-semibold">
-          Read the docs
+          {t("home.cta2")}
         </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-24 text-left">
-        <Feature title="Unified API" body="One request shape for both MonCash and NatCash — create a payment, check status, get notified." />
-        <Feature title="Bring your own account" body="Connect your own MonCash and NatCash merchant credentials — funds settle directly to you." />
-        <Feature title="Sandbox included" body="Every app gets a safe TEST mode that never touches real money, with a try-it console in the docs." />
+        <Feature title={t("home.f1t")} body={t("home.f1b")} />
+        <Feature title={t("home.f2t")} body={t("home.f2b")} />
+        <Feature title={t("home.f3t")} body={t("home.f3b")} />
       </div>
     </div>
   );

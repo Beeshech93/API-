@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { PaymentProvider } from "@ayitipay/shared";
 import { callPortalApi } from "@/lib/apiClient";
 import { ProviderCredentialSummary } from "@/lib/types";
+import { useErrorMessage, useT } from "@/lib/i18n";
 
 const PROVIDERS: { value: PaymentProvider; label: string }[] = [
   { value: "MONCASH", label: "MonCash (Digicel)" },
@@ -11,6 +12,8 @@ const PROVIDERS: { value: PaymentProvider; label: string }[] = [
 ];
 
 export default function ProvidersPage({ params }: { params: { appId: string } }) {
+  const t = useT();
+  const errorMessage = useErrorMessage();
   const [credentials, setCredentials] = useState<ProviderCredentialSummary[]>([]);
   const [provider, setProvider] = useState<PaymentProvider>("MONCASH");
   const [clientId, setClientId] = useState("");
@@ -44,7 +47,7 @@ export default function ProvidersPage({ params }: { params: { appId: string } })
       setBaseUrl("");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save credentials.");
+      setError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -57,10 +60,9 @@ export default function ProvidersPage({ params }: { params: { appId: string } })
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-navy mb-2">Your MonCash &amp; NatCash accounts</h2>
+      <h2 className="text-lg font-semibold text-navy mb-2">{t("prov.title")}</h2>
       <p className="text-sm text-slate-500 mb-6">
-        Connect your own merchant credentials for each provider. LIVE-mode API keys will only work for a
-        provider once you&apos;ve added credentials here — TEST keys always use the built-in safe sandbox.
+        {t("prov.intro")}
       </p>
 
       <ul className="mb-8 space-y-2">
@@ -73,20 +75,20 @@ export default function ProvidersPage({ params }: { params: { appId: string } })
               <p className="font-medium text-navy">
                 {PROVIDERS.find((p) => p.value === cred.provider)?.label ?? cred.provider}
               </p>
-              <p className="text-xs text-slate-500">{cred.active ? "Active" : "Inactive"}</p>
+              <p className="text-xs text-slate-500">{cred.active ? t("prov.active") : t("prov.inactive")}</p>
             </div>
             <button onClick={() => remove(cred.provider)} className="text-red-600 text-xs underline">
-              Disconnect
+              {t("prov.disconnect")}
             </button>
           </li>
         ))}
-        {credentials.length === 0 && <p className="text-sm text-slate-400">No providers connected yet.</p>}
+        {credentials.length === 0 && <p className="text-sm text-slate-400">{t("prov.none")}</p>}
       </ul>
 
       <form onSubmit={save} className="bg-white border border-slate-200 rounded-lg p-5 space-y-3 max-w-lg">
-        <h3 className="font-semibold text-navy text-sm">Add / update credentials</h3>
+        <h3 className="font-semibold text-navy text-sm">{t("prov.addUpdate")}</h3>
         <label className="block text-sm">
-          <span className="block text-slate-600 mb-1">Provider</span>
+          <span className="block text-slate-600 mb-1">{t("prov.provider")}</span>
           <select
             value={provider}
             onChange={(e) => setProvider(e.target.value as PaymentProvider)}
@@ -99,23 +101,19 @@ export default function ProvidersPage({ params }: { params: { appId: string } })
             ))}
           </select>
         </label>
-        <Field label="Client ID" value={clientId} onChange={setClientId} />
-        <Field label="Client secret" value={clientSecret} onChange={setClientSecret} type="password" />
-        <Field label="Webhook secret" value={webhookSecret} onChange={setWebhookSecret} type="password" />
-        <Field label="Base URL (optional override)" value={baseUrl} onChange={setBaseUrl} required={false} />
+        <Field label={t("prov.clientId")} value={clientId} onChange={setClientId} />
+        <Field label={t("prov.clientSecret")} value={clientSecret} onChange={setClientSecret} type="password" />
+        <Field label={t("prov.webhookSecret")} value={webhookSecret} onChange={setWebhookSecret} type="password" />
+        <Field label={t("prov.baseUrl")} value={baseUrl} onChange={setBaseUrl} required={false} />
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <button
           type="submit"
           disabled={saving}
           className="bg-navy text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save credentials"}
+          {saving ? t("prov.saving") : t("prov.save")}
         </button>
-        <p className="text-xs text-slate-400">
-          Stored encrypted at rest. Real MonCash/NatCash API contracts are still being confirmed against each
-          provider&apos;s official docs, so LIVE payments will return a clear &quot;not configured&quot; error
-          until that integration is finished.
-        </p>
+        <p className="text-xs text-slate-400">{t("prov.note")}</p>
       </form>
     </div>
   );

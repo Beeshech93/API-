@@ -3,8 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { callPortalApi } from "@/lib/apiClient";
 import { WebhookDelivery, WebhookEndpoint } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 export default function WebhooksPage({ params }: { params: { appId: string } }) {
+  const t = useT();
   const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([]);
   const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
   const [url, setUrl] = useState("");
@@ -53,7 +55,7 @@ export default function WebhooksPage({ params }: { params: { appId: string } }) 
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-navy mb-4">Webhook endpoints</h2>
+      <h2 className="text-lg font-semibold text-navy mb-4">{t("wh.title")}</h2>
 
       <ul className="space-y-2 mb-6">
         {endpoints.map((ep) => (
@@ -61,15 +63,15 @@ export default function WebhooksPage({ params }: { params: { appId: string } }) 
             <div className="flex items-center justify-between">
               <span className="font-mono text-sm">{ep.url}</span>
               <button onClick={() => removeEndpoint(ep.id)} className="text-red-600 text-xs underline">
-                Remove
+                {t("wh.remove")}
               </button>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Signing secret: <code>{ep.secret}</code>
+              {t("wh.secret")} <code>{ep.secret}</code>
             </p>
           </li>
         ))}
-        {endpoints.length === 0 && <p className="text-sm text-slate-400">No webhook endpoints yet.</p>}
+        {endpoints.length === 0 && <p className="text-sm text-slate-400">{t("wh.none")}</p>}
       </ul>
 
       <form onSubmit={addEndpoint} className="flex gap-2 mb-10 max-w-lg">
@@ -86,18 +88,18 @@ export default function WebhooksPage({ params }: { params: { appId: string } }) 
           disabled={saving}
           className="bg-navy text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
         >
-          Add
+          {t("wh.add")}
         </button>
       </form>
 
-      <h3 className="font-semibold text-navy text-sm mb-2">Recent deliveries</h3>
+      <h3 className="font-semibold text-navy text-sm mb-2">{t("wh.recent")}</h3>
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-slate-500 border-b border-slate-200">
-            <th className="py-2">Event</th>
-            <th>Status</th>
-            <th>Attempts</th>
-            <th>Last response</th>
+            <th className="py-2">{t("wh.event")}</th>
+            <th>{t("wh.status")}</th>
+            <th>{t("wh.attempts")}</th>
+            <th>{t("wh.lastResponse")}</th>
             <th />
           </tr>
         </thead>
@@ -110,7 +112,7 @@ export default function WebhooksPage({ params }: { params: { appId: string } }) 
               <td>{d.responseStatus ?? "—"}</td>
               <td>
                 <button onClick={() => redeliver(d.id)} className="text-navy text-xs underline">
-                  Redeliver
+                  {t("wh.redeliver")}
                 </button>
               </td>
             </tr>
@@ -118,7 +120,7 @@ export default function WebhooksPage({ params }: { params: { appId: string } }) 
           {deliveries.length === 0 && (
             <tr>
               <td colSpan={5} className="py-6 text-center text-slate-400">
-                No deliveries yet.
+                {t("wh.noDeliveries")}
               </td>
             </tr>
           )}

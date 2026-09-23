@@ -44,6 +44,7 @@ function isValid(secret, rawBody, header) {
 
 ## Retries
 
-Failed deliveries (non-2xx or a timeout) are retried with backoff: 1m, 5m, 30m,
-2h, then 12h, up to 6 attempts, after which the delivery is marked `EXHAUSTED`.
-You can manually redeliver any delivery from the dashboard.
+Failed deliveries (non-2xx or a timeout) are retried with backoff, up to 6 attempts,
+after which the delivery is marked `EXHAUSTED`. The first delivery is sent immediately
+when the payment status changes; retries are processed once a day. You can manually
+redeliver any delivery from the dashboard.

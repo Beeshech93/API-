@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { callPortalApi } from "@/lib/apiClient";
 import { LedgerEntry } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 export default function BillingPage({ params }: { params: { appId: string } }) {
+  const t = useT();
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
 
   useEffect(() => {
@@ -23,25 +25,24 @@ export default function BillingPage({ params }: { params: { appId: string } }) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-navy mb-2">Billing</h2>
+      <h2 className="text-lg font-semibold text-navy mb-2">{t("bill.title")}</h2>
       <p className="text-sm text-slate-500 mb-6">
-        AyitiPay charges a small platform fee per successful transaction. This is a running record of what&apos;s
-        owed — v1 does not process this fee automatically.
+        {t("bill.intro")}
       </p>
 
       <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6 inline-block">
-        <p className="text-xs text-slate-500">This month</p>
+        <p className="text-xs text-slate-500">{t("bill.thisMonth")}</p>
         <p className="text-2xl font-bold text-navy">{monthTotal.toFixed(2)}</p>
       </div>
 
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-slate-500 border-b border-slate-200">
-            <th className="py-2">Reference</th>
-            <th>Provider</th>
-            <th>Fee</th>
-            <th>Rate (bps)</th>
-            <th>Date</th>
+            <th className="py-2">{t("bill.reference")}</th>
+            <th>{t("bill.provider")}</th>
+            <th>{t("bill.fee")}</th>
+            <th>{t("bill.rate")}</th>
+            <th>{t("bill.date")}</th>
           </tr>
         </thead>
         <tbody>
@@ -59,7 +60,7 @@ export default function BillingPage({ params }: { params: { appId: string } }) {
           {entries.length === 0 && (
             <tr>
               <td colSpan={5} className="py-6 text-center text-slate-400">
-                No billable transactions yet.
+                {t("bill.empty")}
               </td>
             </tr>
           )}

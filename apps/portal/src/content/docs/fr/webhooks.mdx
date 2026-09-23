@@ -1,0 +1,50 @@
+# Webhooks
+
+Enregistrez un endpoint dans **Webhooks** du tableau de bord de votre application.
+Chaque fois qu'un paiement atteint un état final, AyitiPay envoie un événement en POST à
+tous les endpoints actifs de cette application.
+
+```json
+{
+  "id": "evt_...",
+  "type": "payment.succeeded",
+  "createdAt": "2026-09-21T12:00:05.000Z",
+  "data": {
+    "transaction": { "...": "même forme que GET /v1/payments/:id" }
+  }
+}
+```
+
+## Vérifier les signatures
+
+Chaque livraison inclut un en-tête `X-Webhook-Signature` :
+
+```
+X-Webhook-Signature: t=1758470400,v1=5257a869...
+```
+
+Recalculez la signature sur le corps brut de la requête avec le secret de votre endpoint
+(affiché dans le tableau de bord) et comparez-la avec une comparaison à temps constant :
+
+```js
+const crypto = require("crypto");
+
+function isValid(secret, rawBody, header) {
+  const [tPart, vPart] = header.split(",");
+  const timestamp = tPart.split("=")[1];
+  const signature = vPart.split("=")[1];
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}
+```
+
+## Nouvelles tentatives
+
+Les livraisons en échec (réponse non 2xx ou délai dépassé) sont retentées avec un délai
+progressif, jusqu'à 6 tentatives, après quoi la livraison est marquée `EXHAUSTED`. La
+première livraison part immédiatement au changement de statut du paiement ; les nouvelles
+tentatives sont traitées une fois par jour. Vous pouvez renvoyer manuellement n'importe
+quelle livraison depuis le tableau de bord.

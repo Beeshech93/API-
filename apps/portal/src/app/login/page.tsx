@@ -3,10 +3,12 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthProvider";
-import { ApiError } from "@/lib/apiClient";
+import { useErrorMessage, useT } from "@/lib/i18n";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const t = useT();
+  const errorMessage = useErrorMessage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +21,7 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+      setError(errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -27,10 +29,10 @@ export default function LoginPage() {
 
   return (
     <div className="max-w-md mx-auto px-6 py-16">
-      <h1 className="text-2xl font-bold text-navy mb-6">Sign in</h1>
+      <h1 className="text-2xl font-bold text-navy mb-6">{t("auth.signinTitle")}</h1>
       <form onSubmit={onSubmit} className="space-y-4">
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Email</span>
+          <span className="text-sm font-medium text-slate-700">{t("auth.email")}</span>
           <input
             required
             type="email"
@@ -40,7 +42,7 @@ export default function LoginPage() {
           />
         </label>
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Password</span>
+          <span className="text-sm font-medium text-slate-700">{t("auth.password")}</span>
           <input
             required
             type="password"
@@ -55,11 +57,14 @@ export default function LoginPage() {
           disabled={submitting}
           className="w-full bg-navy text-white py-2.5 rounded-lg font-semibold disabled:opacity-50"
         >
-          {submitting ? "Signing in…" : "Sign in"}
+          {submitting ? t("auth.signingIn") : t("auth.signinTitle")}
         </button>
       </form>
       <p className="text-sm text-slate-600 mt-4">
-        No account yet? <Link href="/signup" className="text-navy underline">Create one</Link>
+        {t("auth.noAccount")}{" "}
+        <Link href="/signup" className="text-navy underline">
+          {t("auth.createOne")}
+        </Link>
       </p>
     </div>
   );

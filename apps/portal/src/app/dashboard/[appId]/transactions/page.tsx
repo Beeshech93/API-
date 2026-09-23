@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { callPortalApi } from "@/lib/apiClient";
 import { TransactionDto } from "@ayitipay/shared";
+import { useT } from "@/lib/i18n";
 
 export default function TransactionsPage({ params }: { params: { appId: string } }) {
+  const t = useT();
   const [transactions, setTransactions] = useState<TransactionDto[]>([]);
 
   useEffect(() => {
@@ -14,16 +16,16 @@ export default function TransactionsPage({ params }: { params: { appId: string }
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-navy mb-4">Transactions</h2>
+      <h2 className="text-lg font-semibold text-navy mb-4">{t("tx.title")}</h2>
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-slate-500 border-b border-slate-200">
-            <th className="py-2">Reference</th>
-            <th>Provider</th>
-            <th>Amount</th>
-            <th>Mode</th>
-            <th>Status</th>
-            <th>Created</th>
+            <th className="py-2">{t("tx.reference")}</th>
+            <th>{t("tx.provider")}</th>
+            <th>{t("tx.amount")}</th>
+            <th>{t("tx.mode")}</th>
+            <th>{t("tx.status")}</th>
+            <th>{t("tx.created")}</th>
           </tr>
         </thead>
         <tbody>
@@ -48,7 +50,7 @@ export default function TransactionsPage({ params }: { params: { appId: string }
           {transactions.length === 0 && (
             <tr>
               <td colSpan={6} className="py-6 text-center text-slate-400">
-                No transactions yet — create one via the API or the docs try-it console.
+                {t("tx.empty")}
               </td>
             </tr>
           )}

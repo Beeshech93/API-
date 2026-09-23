@@ -3,10 +3,12 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthProvider";
-import { ApiError } from "@/lib/apiClient";
+import { useErrorMessage, useT } from "@/lib/i18n";
 
 export default function SignupPage() {
   const { signup } = useAuth();
+  const t = useT();
+  const errorMessage = useErrorMessage();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +22,7 @@ export default function SignupPage() {
     try {
       await signup(email, password, name);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+      setError(errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -28,22 +30,25 @@ export default function SignupPage() {
 
   return (
     <div className="max-w-md mx-auto px-6 py-16">
-      <h1 className="text-2xl font-bold text-navy mb-6">Create your developer account</h1>
+      <h1 className="text-2xl font-bold text-navy mb-6">{t("auth.signupTitle")}</h1>
       <form onSubmit={onSubmit} className="space-y-4">
-        <Field label="Name" value={name} onChange={setName} />
-        <Field label="Email" type="email" value={email} onChange={setEmail} />
-        <Field label="Password" type="password" value={password} onChange={setPassword} />
+        <Field label={t("auth.name")} value={name} onChange={setName} />
+        <Field label={t("auth.email")} type="email" value={email} onChange={setEmail} />
+        <Field label={t("auth.password")} type="password" value={password} onChange={setPassword} />
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <button
           type="submit"
           disabled={submitting}
           className="w-full bg-navy text-white py-2.5 rounded-lg font-semibold disabled:opacity-50"
         >
-          {submitting ? "Creating account…" : "Create account"}
+          {submitting ? t("auth.creating") : t("auth.createAccount")}
         </button>
       </form>
       <p className="text-sm text-slate-600 mt-4">
-        Already have an account? <Link href="/login" className="text-navy underline">Sign in</Link>
+        {t("auth.haveAccount")}{" "}
+        <Link href="/login" className="text-navy underline">
+          {t("auth.signInLink")}
+        </Link>
       </p>
     </div>
   );
