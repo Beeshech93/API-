@@ -23,7 +23,7 @@ export const SANDBOX_TEST_NUMBERS = {
   timeout: "50900000004",
 } as const;
 
-export class BazikSandbox implements PaymentProviderClient {
+export class SandboxProvider implements PaymentProviderClient {
   async createPayment(input: CreateProviderPaymentInput): Promise<ProviderPayment> {
     const providerTransactionId = `sbx_${input.network.toLowerCase()}_${crypto.randomBytes(8).toString("hex")}`;
     if (input.phone.endsWith("0003")) {

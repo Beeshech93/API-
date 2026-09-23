@@ -30,7 +30,7 @@ export interface ProviderHealth {
 }
 
 // The single seam between HaitiPay's public API and whichever integrator moves
-// the money. PaymentService only ever talks to this interface, so Bazik can be
+// the money. PaymentService only ever talks to this interface, so the provider can be
 // swapped for another provider without touching the public API.
 export interface PaymentProviderClient {
   createPayment(input: CreateProviderPaymentInput): Promise<ProviderPayment>;

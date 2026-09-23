@@ -31,26 +31,26 @@ export default function ProvidersPage() {
     }
   }
 
-  const bazik = providers.find((p) => p.code === "bazik");
+  const primary = providers.find((p) => p.code === "primary");
   return (
     <div>
       <PageTitle title={t("admin.providers")} subtitle={t("admin.providersSubtitle")} action={<Button onClick={check} disabled={busy}>{t("admin.testConnection")}</Button>} />
       <ErrorNote message={error} />
-      {bazik && (
+      {primary && (
         <Card className="p-5 mb-6">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-navy text-lg">Bazik</h2>
-            <Badge value={bazik.status === "operational" ? "operational" : "down"} label={bazik.status === "operational" ? "CONNECTED" : "DISCONNECTED"} />
+            <h2 className="font-bold text-navy text-lg">{primary.name}</h2>
+            <Badge value={primary.status === "operational" ? "operational" : "down"} label={primary.status === "operational" ? "CONNECTED" : "DISCONNECTED"} />
           </div>
           <dl className="text-sm mt-4 space-y-2">
-            <div className="flex justify-between"><dt className="text-slate-500">BAZIK_API_URL / API_KEY / SECRET_KEY</dt><dd className="font-mono">{bazik.credentials === "configured" ? "••••••••••••" : t("admin.credMissing")}</dd></div>
-            {bazik.message && <div className="flex justify-between gap-4"><dt className="text-slate-500">{t("admin.detail")}</dt><dd className="text-right">{bazik.message}</dd></div>}
+            <div className="flex justify-between"><dt className="text-slate-500">PROVIDER_API_URL / API_KEY / SECRET_KEY</dt><dd className="font-mono">{primary.credentials === "configured" ? "••••••••••••" : t("admin.credMissing")}</dd></div>
+            {primary.message && <div className="flex justify-between gap-4"><dt className="text-slate-500">{t("admin.detail")}</dt><dd className="text-right">{primary.message}</dd></div>}
           </dl>
           <p className="text-xs text-slate-500 mt-4">{t("admin.envOnly")}</p>
         </Card>
       )}
       <div className="grid md:grid-cols-3 gap-4">
-        {providers.filter((p) => p.code !== "bazik").map((p) => (
+        {providers.filter((p) => p.code !== "primary").map((p) => (
           <Card key={p.code} className="p-5">
             <div className="flex items-center justify-between"><h2 className="font-bold text-navy">{p.name}</h2><Badge value={p.status} label={t(`status.${p.status}`)} /></div>
             <p className="text-xs text-slate-500 mt-3">{t("admin.errorRate")}: {(p.error_rate * 100).toFixed(1)}% · {p.response_time_ms ?? "—"} ms</p>

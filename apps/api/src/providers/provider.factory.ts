@@ -1,9 +1,9 @@
-import { BazikService } from "@/providers/bazik.service";
-import { BazikSandbox } from "@/providers/bazik.sandbox";
+import { LiveProvider } from "@/providers/live.provider";
+import { SandboxProvider } from "@/providers/sandbox.provider";
 import { PaymentProviderClient } from "@/providers/provider.types";
 
-const live = new BazikService();
-const sandbox = new BazikSandbox();
+const live = new LiveProvider();
+const sandbox = new SandboxProvider();
 
 // TEST keys are always routed to the sandbox, LIVE keys always to the real
 // provider — the environment is decided by the API key, never by the request.

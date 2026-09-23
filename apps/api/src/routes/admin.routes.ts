@@ -186,7 +186,7 @@ adminRouter.put("/settings/fees", asyncHandler(async (req, res) => {
   res.json({ success: true, fees });
 }));
 
-// ---- Providers (Bazik) ---------------------------------------------------
+// ---- Providers ---------------------------------------------------
 
 adminRouter.get("/providers", asyncHandler(async (_req, res) => res.json({ success: true, providers: await listProviders() })));
 // "Test Connection": probes the provider from the backend; secrets never leave it.

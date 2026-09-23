@@ -61,11 +61,10 @@ export default function Landing() {
         </div>
       </Section>
 
-      <Section id="providers" title="MonCash · NatCash · Bazik">
-        <div className="grid md:grid-cols-3 gap-4">
+      <Section id="providers" title="MonCash · NatCash">
+        <div className="grid md:grid-cols-2 gap-4">
           <Card><h3 className="text-navy font-semibold">{t("land.moncash.title")}</h3><p className="text-sm text-slate-500 mt-1">{t("land.moncash.body")}</p></Card>
           <Card><h3 className="text-navy font-semibold">{t("land.natcash.title")}</h3><p className="text-sm text-slate-500 mt-1">{t("land.natcash.body")}</p></Card>
-          <Card><h3 className="text-navy font-semibold">{t("land.bazik.title")}</h3><p className="text-sm text-slate-500 mt-1">{t("land.bazik.body")}</p></Card>
         </div>
       </Section>
 

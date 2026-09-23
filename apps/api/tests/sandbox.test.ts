@@ -1,11 +1,11 @@
-import { BazikSandbox, SANDBOX_TEST_NUMBERS } from "@/providers/bazik.sandbox";
-import { BazikService } from "@/providers/bazik.service";
+import { SandboxProvider, SANDBOX_TEST_NUMBERS } from "@/providers/sandbox.provider";
+import { LiveProvider } from "@/providers/live.provider";
 import { getProvider } from "@/providers/provider.factory";
 
 const input = (phone: string) => ({ network: "MONCASH" as const, amount: 500, currency: "HTG" as const, phone, requestId: "req_test" });
 
 describe("sandbox provider (never moves real money)", () => {
-  const sandbox = new BazikSandbox();
+  const sandbox = new SandboxProvider();
 
   it("completes, fails, or stays pending based on the test number", async () => {
     expect((await sandbox.createPayment(input(SANDBOX_TEST_NUMBERS.completed))).status).toBe("COMPLETED");
@@ -24,9 +24,9 @@ describe("sandbox provider (never moves real money)", () => {
 });
 
 describe("environment routing", () => {
-  it("routes TEST to the sandbox and LIVE to Bazik", () => {
-    expect(getProvider("TEST")).toBeInstanceOf(BazikSandbox);
-    expect(getProvider("LIVE")).toBeInstanceOf(BazikService);
+  it("routes TEST to the sandbox and LIVE to the real provider", () => {
+    expect(getProvider("TEST")).toBeInstanceOf(SandboxProvider);
+    expect(getProvider("LIVE")).toBeInstanceOf(LiveProvider);
   });
 
   it("LIVE fails closed instead of inventing provider calls", async () => {

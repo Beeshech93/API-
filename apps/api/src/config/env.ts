@@ -10,7 +10,7 @@ function required(name: string, fallback?: string): string {
 
 const isProduction = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
 
-// Provider (Bazik) credentials belong to the platform operator only. They are
+// Provider credentials belong to the platform operator only. They are
 // read here from the backend environment and never stored in the database,
 // returned by any endpoint, or sent to a browser.
 export const env = {
@@ -26,11 +26,14 @@ export const env = {
   portalAppUrl: process.env.PORTAL_APP_URL ?? "http://localhost:3000",
   cronSecret: process.env.CRON_SECRET ?? "",
   trialDays: Number(process.env.TRIAL_DAYS ?? 14),
-  bazik: {
-    apiUrl: process.env.BAZIK_API_URL ?? "",
-    apiKey: process.env.BAZIK_API_KEY ?? "",
-    secretKey: process.env.BAZIK_SECRET_KEY ?? "",
-    webhookSecret: process.env.BAZIK_WEBHOOK_SECRET ?? "",
+  // Display name is shown to administrators only; it lives here (not in code)
+  // so the public repository stays provider-neutral.
+  provider: {
+    name: process.env.PROVIDER_NAME ?? "Payment provider",
+    apiUrl: process.env.PROVIDER_API_URL ?? "",
+    apiKey: process.env.PROVIDER_API_KEY ?? "",
+    secretKey: process.env.PROVIDER_SECRET_KEY ?? "",
+    webhookSecret: process.env.PROVIDER_WEBHOOK_SECRET ?? "",
   },
   webhook: {
     maxAttempts: Number(process.env.WEBHOOK_MAX_ATTEMPTS ?? 6),
@@ -40,6 +43,6 @@ export const env = {
   ipRateLimitPerMinute: Number(process.env.RATE_LIMIT_IP_PER_MIN ?? 600),
 } as const;
 
-export function isBazikConfigured(): boolean {
-  return Boolean(env.bazik.apiUrl && env.bazik.apiKey && env.bazik.secretKey);
+export function isProviderConfigured(): boolean {
+  return Boolean(env.provider.apiUrl && env.provider.apiKey && env.provider.secretKey);
 }
