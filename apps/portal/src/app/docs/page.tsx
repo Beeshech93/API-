@@ -44,7 +44,7 @@ function LangTabs({ group }: { group: keyof ReturnType<typeof samples> }) {
     <div className="my-3">
       <div role="tablist" className="flex flex-wrap gap-1 mb-2">
         {available.map((l) => (
-          <button key={l} role="tab" aria-selected={lang === l} onClick={() => setLang(l)} className={`px-3 py-1 rounded-full text-xs font-semibold ${lang === l ? "bg-electric text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"}`}>{LANG_LABEL[l]}</button>
+          <button key={l} role="tab" aria-selected={lang === l} onClick={() => setLang(l)} className={`px-3 py-1 rounded-full text-xs font-semibold ${lang === l ? "bg-brand text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"}`}>{LANG_LABEL[l]}</button>
         ))}
       </div>
       <Code>{set[available.includes(lang) ? lang : available[0]] ?? ""}</Code>
@@ -62,7 +62,7 @@ export default function DocsPage() {
           {SECTIONS.map((id) => (
             <a key={id} href={`#${id}`} className="px-3 py-1.5 rounded-lg hover:bg-slate-200 text-slate-700">{t(`doc.${id}.title`)}</a>
           ))}
-          <Link href="/docs/console" className="px-3 py-1.5 rounded-lg bg-electric text-white font-semibold mt-2">{t("docs.tryIt")}</Link>
+          <Link href="/docs/console" className="px-3 py-1.5 rounded-lg bg-brand text-white font-semibold mt-2">{t("docs.tryIt")}</Link>
         </nav>
       </aside>
 
@@ -131,7 +131,7 @@ export default function DocsPage() {
                 <div className="overflow-x-auto"><table className="w-full text-sm bg-white border border-slate-200 rounded-xl"><tbody>{SANDBOX_NUMBERS.map(([num, key]) => (<tr key={num} className="border-b border-slate-100"><td className="p-3 font-mono text-xs">{num}</td><td className="p-3 text-xs">{t(`doc.${key}`)}</td></tr>))}</tbody></table></div>
                 <p className="text-sm text-slate-500 mt-3">{t("doc.simulate")}</p>
                 <LangTabs group="simulate" />
-                <Link href="/docs/console" className="inline-block mt-3 bg-electric text-white px-4 py-2 rounded-lg text-sm font-semibold">{t("docs.tryIt")}</Link>
+                <Link href="/docs/console" className="inline-block mt-3 bg-brand text-white px-4 py-2 rounded-lg text-sm font-semibold">{t("docs.tryIt")}</Link>
               </>
             )}
           </section>

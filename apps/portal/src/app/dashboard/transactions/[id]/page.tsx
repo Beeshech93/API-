@@ -38,7 +38,7 @@ export default function TransactionDetailPage({ params }: { params: { id: string
 
   return (
     <div>
-      <Link href="/dashboard/transactions" className="text-sm text-electric underline">← {t("nav.transactions")}</Link>
+      <Link href="/dashboard/transactions" className="text-sm text-brand underline">← {t("nav.transactions")}</Link>
       <PageTitle title={t("tx.detail")} />
       <Card className="p-5 mb-6">
         <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">

@@ -56,7 +56,7 @@ export default function TransactionsPage() {
       <Table head={[t("tx.id"), t("tx.provider"), t("tx.amount"), t("tx.fee"), t("tx.phone"), t("keys.environment"), t("common.status"), t("tx.created")]} empty={t("tx.empty")}>
         {rows.map((r) => (
           <tr key={r.transaction_id}>
-            <td><Link className="text-electric underline font-mono text-xs" href={`/dashboard/transactions/${r.transaction_id}`}>{r.transaction_id}</Link></td>
+            <td><Link className="text-brand underline font-mono text-xs" href={`/dashboard/transactions/${r.transaction_id}`}>{r.transaction_id}</Link></td>
             <td className="capitalize">{r.provider}</td>
             <td className="whitespace-nowrap">{r.amount} {r.currency}</td>
             <td>{r.fee}</td>

@@ -57,7 +57,7 @@ export default function ClientsPage() {
             <td>{c.plan ?? "—"}</td>
             <td><Badge value={c.subscription_status} label={t(`status.${c.subscription_status}`)} /></td>
             <td><Badge value={c.status} label={t(`status.${c.status}`)} /></td>
-            <td><Link href={`/admin/clients/${c.id}`} className="text-electric underline">{t("common.view")}</Link></td>
+            <td><Link href={`/admin/clients/${c.id}`} className="text-brand underline">{t("common.view")}</Link></td>
           </tr>
         ))}
       </Table>

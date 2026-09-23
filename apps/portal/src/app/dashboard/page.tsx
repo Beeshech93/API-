@@ -43,10 +43,10 @@ export default function OverviewPage() {
       <PageTitle title={t("nav.dashboard")} subtitle={t("overview.subtitle")} />
 
       {!data.live_access && (
-        <Card className="p-5 mb-6 border-electric/40 bg-electric-100">
+        <Card className="p-5 mb-6 border-brand/40 bg-brand-100">
           <p className="font-semibold text-navy">{t("overview.noPlanTitle")}</p>
           <p className="text-sm text-slate-600 mt-1">{t("overview.noPlanBody")}</p>
-          <Link href="/dashboard/billing" className="inline-block mt-3 bg-electric text-white px-4 py-2 rounded-lg text-sm font-semibold">
+          <Link href="/dashboard/billing" className="inline-block mt-3 bg-brand text-white px-4 py-2 rounded-lg text-sm font-semibold">
             {t("overview.choosePlan")}
           </Link>
         </Card>

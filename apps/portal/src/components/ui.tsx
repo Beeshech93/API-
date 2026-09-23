@@ -50,7 +50,7 @@ const BADGES: Record<string, string> = {
   degraded: "bg-amber-100 text-amber-700",
   unknown: "bg-slate-200 text-slate-600",
   test: "bg-violet-100 text-violet-700",
-  live: "bg-electric-100 text-electric-600",
+  live: "bg-brand-100 text-brand-600",
 };
 
 export function Badge({ value, label }: { value: string; label?: string }) {
@@ -63,10 +63,10 @@ export function Button({
   children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; variant?: "primary" | "secondary" | "danger" | "ghost"; disabled?: boolean; className?: string;
 }) {
   const styles = {
-    primary: "bg-electric text-white hover:bg-electric-600",
+    primary: "bg-brand text-white hover:bg-brand-600",
     secondary: "bg-white border border-slate-300 text-navy hover:bg-slate-50",
     danger: "bg-white border border-red-300 text-red-600 hover:bg-red-50",
-    ghost: "text-electric hover:bg-electric-100",
+    ghost: "text-brand hover:bg-brand-100",
   }[variant];
   return (
     <button type={type} onClick={onClick} disabled={disabled} className={`px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors ${styles} ${className}`}>
@@ -80,7 +80,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement> & {
   return (
     <label className="block text-sm">
       {label && <span className="block text-slate-600 mb-1">{label}</span>}
-      <input {...rest} className={`w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-electric ${className}`} />
+      <input {...rest} className={`w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand ${className}`} />
     </label>
   );
 }
@@ -144,7 +144,7 @@ export function CopyButton({ text, label, doneLabel }: { text: string; label: st
   );
 }
 
-export function BarChart({ data, color = "#2f6bff", height = 120 }: { data: { label: string; value: number }[]; color?: string; height?: number }) {
+export function BarChart({ data, color = "#16a34a", height = 120 }: { data: { label: string; value: number }[]; color?: string; height?: number }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   const barWidth = 100 / Math.max(1, data.length);
   return (
@@ -169,7 +169,7 @@ export function BarChart({ data, color = "#2f6bff", height = 120 }: { data: { la
 
 export function ProgressBar({ value, max }: { value: number; max: number | null }) {
   const pct = max ? Math.min(100, (value / max) * 100) : 0;
-  const tone = pct > 90 ? "bg-red-500" : pct > 70 ? "bg-amber-500" : "bg-electric";
+  const tone = pct > 90 ? "bg-red-500" : pct > 70 ? "bg-amber-500" : "bg-brand";
   return (
     <div className="h-2 bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-valuenow={value} aria-valuemax={max ?? undefined}>
       <div className={`h-full ${tone}`} style={{ width: `${pct}%` }} />

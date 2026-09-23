@@ -72,7 +72,7 @@ export default function BillingPage() {
           const isCurrent = p.code === current;
           const label = !current ? t("billing.select") : order.indexOf(p.code) > order.indexOf(current) ? t("billing.upgrade") : t("billing.downgrade");
           return (
-            <Card key={p.code} className={`p-5 flex flex-col ${isCurrent ? "ring-2 ring-electric" : ""}`}>
+            <Card key={p.code} className={`p-5 flex flex-col ${isCurrent ? "ring-2 ring-brand" : ""}`}>
               <h3 className="font-bold text-navy">{p.name}</h3>
               <p className="text-2xl font-bold mt-2">{p.price === null ? t("plans.custom") : `$${p.price}`}{p.price !== null && <span className="text-sm font-normal text-slate-500">/{t("plans.month")}</span>}</p>
               <ul className="text-sm text-slate-600 mt-3 space-y-1 flex-1">

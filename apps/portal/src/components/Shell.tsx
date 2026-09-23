@@ -39,7 +39,7 @@ export function Shell({ items, title, requireRole, children }: { items: NavItem[
           <Link
             key={item.href}
             href={item.href}
-            className={`px-3 py-2 rounded-lg text-sm ${active ? "bg-electric text-white font-semibold" : "text-slate-300 hover:bg-navy-700 hover:text-white"}`}
+            className={`px-3 py-2 rounded-lg text-sm ${active ? "bg-brand text-white font-semibold" : "text-slate-600 hover:bg-brand-50 hover:text-navy"}`}
           >
             {t(item.key)}
           </Link>
@@ -50,38 +50,38 @@ export function Shell({ items, title, requireRole, children }: { items: NavItem[
 
   return (
     <div className="min-h-screen md:flex">
-      <header className="md:hidden bg-navy text-white flex items-center justify-between px-4 py-3">
+      <header className="md:hidden bg-white text-navy border-b border-slate-200 flex items-center justify-between px-4 py-3">
         <Link href="/" className="font-bold">
-          Haiti<span className="text-electric">Pay</span>
+          Haiti<span className="text-brand">Pay</span>
         </Link>
-        <button onClick={() => setOpen(!open)} aria-label="Menu" aria-expanded={open} className="px-3 py-1 border border-white/30 rounded-lg text-sm">
+        <button onClick={() => setOpen(!open)} aria-label="Menu" aria-expanded={open} className="px-3 py-1 border border-slate-300 rounded-lg text-sm">
           {open ? "×" : "☰"}
         </button>
       </header>
-      <aside className={`${open ? "block" : "hidden"} md:flex md:flex-col md:w-64 md:min-h-screen bg-navy text-white p-4 gap-6 md:sticky md:top-0 md:h-screen md:overflow-y-auto`}>
+      <aside className={`${open ? "block" : "hidden"} md:flex md:flex-col md:w-64 md:min-h-screen bg-white text-navy border-r border-slate-200 p-4 gap-6 md:sticky md:top-0 md:h-screen md:overflow-y-auto`}>
         <div className="hidden md:block">
           <Link href="/" className="font-bold text-xl">
-            Haiti<span className="text-electric">Pay</span>
+            Haiti<span className="text-brand">Pay</span>
           </Link>
-          <p className="text-xs text-slate-400 mt-1">{title}</p>
+          <p className="text-xs text-slate-500 mt-1">{title}</p>
         </div>
         {nav}
-        <div className="mt-auto space-y-3 pt-4 border-t border-white/10">
-          <div role="group" aria-label="Language" className="flex rounded-lg border border-white/20 overflow-hidden text-xs">
+        <div className="mt-auto space-y-3 pt-4 border-t border-slate-200">
+          <div role="group" aria-label="Language" className="flex rounded-lg border border-slate-300 overflow-hidden text-xs">
             {LOCALES.map((code: Locale) => (
               <button
                 key={code}
                 type="button"
                 onClick={() => setLocale(code)}
                 aria-pressed={locale === code}
-                className={`flex-1 py-1.5 font-semibold ${locale === code ? "bg-electric text-white" : "text-slate-300 hover:text-white"}`}
+                className={`flex-1 py-1.5 font-semibold ${locale === code ? "bg-brand text-white" : "text-slate-500 hover:text-navy"}`}
               >
                 {code.toUpperCase()}
               </button>
             ))}
           </div>
-          <p className="text-xs text-slate-400 truncate" title={user.email}>{user.email}</p>
-          <button onClick={logout} className="text-sm text-slate-300 hover:text-white underline">
+          <p className="text-xs text-slate-500 truncate" title={user.email}>{user.email}</p>
+          <button onClick={logout} className="text-sm text-slate-600 hover:text-navy underline">
             {t("nav.signOut")}
           </button>
         </div>

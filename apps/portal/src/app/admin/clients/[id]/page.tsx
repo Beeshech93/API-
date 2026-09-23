@@ -44,7 +44,7 @@ export default function ClientDetail({ params }: { params: { id: string } }) {
   if (!d) return <p className="text-slate-500">{error ?? t("common.loading")}</p>;
   return (
     <div>
-      <Link href="/admin/clients" className="text-sm text-electric underline">← {t("admin.clients")}</Link>
+      <Link href="/admin/clients" className="text-sm text-brand underline">← {t("admin.clients")}</Link>
       <PageTitle title={d.client.name} subtitle={d.users.map((u) => u.email).join(", ")} action={<Badge value={d.client.status} label={t(`status.${d.client.status}`)} />} />
       <ErrorNote message={error} />
       <div className="grid md:grid-cols-2 gap-4 mb-6">

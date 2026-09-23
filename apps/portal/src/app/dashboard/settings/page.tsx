@@ -21,7 +21,7 @@ export default function SettingsPage() {
         <h2 className="font-semibold text-navy mb-3">{t("settings.language")}</h2>
         <div className="flex flex-wrap gap-2">
           {LOCALES.map((code) => (
-            <button key={code} onClick={() => setLocale(code)} aria-pressed={locale === code} className={`px-4 py-2 rounded-lg text-sm border ${locale === code ? "bg-electric text-white border-electric" : "bg-white border-slate-300 text-navy"}`}>
+            <button key={code} onClick={() => setLocale(code)} aria-pressed={locale === code} className={`px-4 py-2 rounded-lg text-sm border ${locale === code ? "bg-brand text-white border-brand" : "bg-white border-slate-300 text-navy"}`}>
               {LOCALE_NAMES[code]}
             </button>
           ))}

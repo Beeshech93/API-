@@ -37,7 +37,7 @@ export default function ConsolePage() {
 
   return (
     <div className="max-w-2xl">
-      <Link href="/docs" className="text-sm text-electric underline">← {t("nav.docs")}</Link>
+      <Link href="/docs" className="text-sm text-brand underline">← {t("nav.docs")}</Link>
       <h1 className="text-2xl font-bold text-navy mt-2 mb-2">{t("con.title")}</h1>
       <p className="text-slate-600 mb-6">{t("con.intro")}</p>
 

@@ -43,7 +43,7 @@ export default function SignupPage() {
           <ErrorNote message={error} />
           <Button type="submit" disabled={busy} className="w-full">{busy ? t("auth.creating") : t("auth.createAccount")}</Button>
         </form>
-        <p className="text-sm text-slate-600 mt-4">{t("auth.haveAccount")} <Link href="/login" className="text-electric underline">{t("auth.signInLink")}</Link></p>
+        <p className="text-sm text-slate-600 mt-4">{t("auth.haveAccount")} <Link href="/login" className="text-brand underline">{t("auth.signInLink")}</Link></p>
       </Card>
     </div>
   );

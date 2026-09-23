@@ -38,7 +38,7 @@ export default function LoginPage() {
           <ErrorNote message={error} />
           <Button type="submit" disabled={busy} className="w-full">{busy ? t("auth.signingIn") : t("auth.signinTitle")}</Button>
         </form>
-        <p className="text-sm text-slate-600 mt-4">{t("auth.noAccount")} <Link href="/signup" className="text-electric underline">{t("auth.createOne")}</Link></p>
+        <p className="text-sm text-slate-600 mt-4">{t("auth.noAccount")} <Link href="/signup" className="text-brand underline">{t("auth.createOne")}</Link></p>
       </Card>
     </div>
   );
