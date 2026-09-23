@@ -8,6 +8,7 @@ import { Badge, ErrorNote, PageTitle, Select, Table } from "@/components/ui";
 
 export interface Tx {
   transaction_id: string;
+  type: "payment" | "transfer";
   status: string;
   provider: string;
   amount: number;
@@ -28,13 +29,14 @@ export default function TransactionsPage() {
   const [rows, setRows] = useState<Tx[]>([]);
   const [status, setStatus] = useState("");
   const [environment, setEnvironment] = useState("");
+  const [type, setType] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const qs = new URLSearchParams({ limit: "100", ...(status ? { status } : {}), ...(environment ? { environment } : {}) });
+    const qs = new URLSearchParams({ limit: "100", ...(status ? { status } : {}), ...(environment ? { environment } : {}), ...(type ? { type } : {}) });
     api<{ transactions: Tx[] }>(`/portal/transactions?${qs}`).then((d) => setRows(d.transactions)).catch((e) => setError(errorMessage(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, environment]);
+  }, [status, environment, type]);
 
   return (
     <div>
@@ -46,6 +48,11 @@ export default function TransactionsPage() {
             <option key={s} value={s}>{t(`status.${s}`)}</option>
           ))}
         </Select>
+        <Select label={t("tx.type")} value={type} onChange={(e) => setType(e.target.value)}>
+          <option value="">{t("common.all")}</option>
+          <option value="payment">{t("tx.payment")}</option>
+          <option value="transfer">{t("tx.transfer")}</option>
+        </Select>
         <Select label={t("keys.environment")} value={environment} onChange={(e) => setEnvironment(e.target.value)}>
           <option value="">{t("common.all")}</option>
           <option value="test">{t("env.test")}</option>
@@ -53,10 +60,11 @@ export default function TransactionsPage() {
         </Select>
       </div>
       <ErrorNote message={error} />
-      <Table head={[t("tx.id"), t("tx.provider"), t("tx.amount"), t("tx.fee"), t("tx.phone"), t("keys.environment"), t("common.status"), t("tx.created")]} empty={t("tx.empty")}>
+      <Table head={[t("tx.id"), t("tx.type"), t("tx.provider"), t("tx.amount"), t("tx.fee"), t("tx.phone"), t("keys.environment"), t("common.status"), t("tx.created")]} empty={t("tx.empty")}>
         {rows.map((r) => (
           <tr key={r.transaction_id}>
             <td><Link className="text-brand underline font-mono text-xs" href={`/dashboard/transactions/${r.transaction_id}`}>{r.transaction_id}</Link></td>
+            <td><Badge value={r.type === "transfer" ? "processing" : "completed"} label={t(`tx.${r.type}`)} /></td>
             <td className="capitalize">{r.provider}</td>
             <td className="whitespace-nowrap">{r.amount} {r.currency}</td>
             <td>{r.fee}</td>

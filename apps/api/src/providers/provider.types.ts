@@ -34,6 +34,8 @@ export interface ProviderHealth {
 // swapped for another provider without touching the public API.
 export interface PaymentProviderClient {
   createPayment(input: CreateProviderPaymentInput): Promise<ProviderPayment>;
+  // Sends money out to a phone number (payout). Same result shape as a payment.
+  createTransfer(input: CreateProviderPaymentInput): Promise<ProviderPayment>;
   getPayment(network: NetworkCode, providerTransactionId: string): Promise<ProviderPayment>;
   getBalance(network: NetworkCode): Promise<ProviderBalance>;
   healthCheck(): Promise<ProviderHealth>;

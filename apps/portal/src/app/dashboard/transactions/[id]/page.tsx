@@ -23,6 +23,7 @@ export default function TransactionDetailPage({ params }: { params: { id: string
 
   const rows: [string, React.ReactNode][] = [
     [t("tx.id"), <code key="i" className="text-xs">{tx.transaction_id}</code>],
+    [t("tx.type"), t(`tx.${tx.type}`)],
     [t("common.status"), <Badge key="s" value={tx.status} label={t(`status.${tx.status}`)} />],
     [t("tx.provider"), <span key="p" className="capitalize">{tx.provider}</span>],
     [t("keys.environment"), t(`env.${tx.environment}`)],

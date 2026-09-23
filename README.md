@@ -18,12 +18,12 @@ CLIENT → API KEY → HAITIPAY API → validation → plan / limits / quota →
 ## Status
 
 - **Works end to end:** signup/login (rotating httpOnly refresh tokens), plans & subscriptions (trial →
-  admin-confirmed activation), API keys with permissions, idempotent payments, quotes/fees, HMAC webhooks
+  admin-confirmed activation), API keys with permissions, idempotent payments **and transfers (send money)** on both MonCash and NatCash — payouts draw only on the client's collected balance, reserved atomically — quotes/fees, HMAC webhooks
   (SSRF-protected), rate limits per client / key / endpoint / IP, atomic monthly quota, API + audit logs,
   admin panel, and a deterministic **sandbox** that never moves money.
 - **Not implemented yet:** LIVE processing. The provider's API contract hasn't been confirmed, so the live
   provider fails closed (`PROVIDER_ERROR`) instead of inventing endpoints — see `apps/api/src/providers/live.provider.ts`.
-  Also pending: transfers, email verification / password reset / 2FA, and an online payment processor
+  Also pending: email verification / password reset / 2FA, and an online payment processor
   (billing is provider-agnostic; today an admin confirms payment).
 
 ## Running locally

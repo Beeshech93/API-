@@ -24,6 +24,11 @@ export const SANDBOX_TEST_NUMBERS = {
 } as const;
 
 export class SandboxProvider implements PaymentProviderClient {
+  // Payouts follow the same simulated outcomes as payments (see the phone rules above).
+  async createTransfer(input: CreateProviderPaymentInput): Promise<ProviderPayment> {
+    return this.createPayment(input);
+  }
+
   async createPayment(input: CreateProviderPaymentInput): Promise<ProviderPayment> {
     const providerTransactionId = `sbx_${input.network.toLowerCase()}_${crypto.randomBytes(8).toString("hex")}`;
     if (input.phone.endsWith("0003")) {

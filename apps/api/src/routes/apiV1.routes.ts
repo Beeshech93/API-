@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Network } from "@prisma/client";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { AppError } from "@/utils/errors";
-import { requireApiKey, requirePermission } from "@/middleware/auth.apikey";
+import { requireApiKey, requireAnyPermission, requirePermission } from "@/middleware/auth.apikey";
 import { apiLogger } from "@/middleware/apiLogger";
 import { ipRateLimit } from "@/middleware/rateLimit";
 import {
@@ -47,7 +47,7 @@ apiV1Router.get(
 apiV1Router.post(
   "/sandbox/transactions/:id/simulate",
   requireApiKey,
-  requirePermission("payments:create"),
+  requireAnyPermission("payments:create", "transfers:create"),
   asyncHandler(async (req, res) => {
     const { outcome } = simulateSchema.parse(req.body);
     const t = await payments.simulateTransaction(
@@ -91,6 +91,46 @@ network.post(
   })
 );
 
+// Sending money out. Draws only on the client's own collected balance.
+network.post(
+  "/transfers",
+  requirePermission("transfers:create"),
+  asyncHandler(async (req, res) => {
+    const key = idempotencyKeySchema.parse(req.header("Idempotency-Key"));
+    const body = createPaymentSchema.parse(req.body);
+    const { transaction, replayed } = await payments.createTransfer(
+      { clientId: req.apiAuth!.clientId, apiKeyId: req.apiAuth!.apiKeyId, environment: req.apiAuth!.environment, requestId: req.ctx.requestId },
+      NETWORKS[req.params.network],
+      body,
+      key
+    );
+    if (replayed) res.setHeader("Idempotent-Replayed", "true");
+    res.status(replayed ? 200 : 201).json(payments.serializeTransaction(transaction));
+  })
+);
+
+network.get(
+  "/transfers/:id",
+  requirePermission("transfers:read"),
+  asyncHandler(async (req, res) => {
+    const t = await payments.getTransaction(req.apiAuth!.clientId, req.apiAuth!.environment, req.params.id, NETWORKS[req.params.network]);
+    if (t.type !== "TRANSFER") throw new AppError("TRANSACTION_NOT_FOUND", "Transaction not found.");
+    res.json(payments.serializeTransaction(t));
+  })
+);
+
+network.get(
+  "/transfers",
+  requirePermission("transfers:read"),
+  asyncHandler(async (req, res) => {
+    const q = listQuerySchema.parse(req.query);
+    const rows = await payments.listTransactions(req.apiAuth!.clientId, req.apiAuth!.environment, {
+      network: NETWORKS[req.params.network], type: "TRANSFER", status: q.status?.toUpperCase() as never, limit: q.limit, before: q.before ? new Date(q.before) : undefined,
+    });
+    res.json({ success: true, transfers: rows.map(payments.serializeTransaction), has_more: rows.length === q.limit });
+  })
+);
+
 network.get(
   "/transactions/:id",
   requirePermission("transactions:read"),
@@ -116,6 +156,7 @@ network.get(
     const q = listQuerySchema.parse(req.query);
     const rows = await payments.listTransactions(req.apiAuth!.clientId, req.apiAuth!.environment, {
       network: NETWORKS[req.params.network],
+      type: typeof req.query.type === "string" && ["payment", "transfer"].includes(req.query.type) ? (req.query.type.toUpperCase() as "PAYMENT" | "TRANSFER") : undefined,
       status: q.status?.toUpperCase() as never,
       limit: q.limit,
       before: q.before ? new Date(q.before) : undefined,

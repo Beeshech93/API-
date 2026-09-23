@@ -13,6 +13,7 @@ export default function ConsolePage() {
   const errorMessage = useErrorMessage();
   const [apiKey, setApiKey] = useState("");
   const [provider, setProvider] = useState("moncash");
+  const [operation, setOperation] = useState<"payments" | "transfers">("payments");
   const [amount, setAmount] = useState(1000);
   const [phone, setPhone] = useState("50937123456");
   const [tx, setTx] = useState<Record<string, unknown> | null>(null);
@@ -44,7 +45,11 @@ export default function ConsolePage() {
       <Card className="p-5 mb-6 space-y-3">
         <TextInput label={t("con.key")} value={apiKey} onChange={(e) => setApiKey(e.target.value.trim())} placeholder="hp_test_..." className="font-mono" autoComplete="off" />
         {apiKey && !testKey && <p className="text-xs text-red-600">{t("con.onlyTest")}</p>}
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Select label={t("con.type")} value={operation} onChange={(e) => setOperation(e.target.value as "payments" | "transfers")}>
+            <option value="payments">{t("tx.payment")}</option>
+            <option value="transfers">{t("tx.transfer")}</option>
+          </Select>
           <Select label={t("con.provider")} value={provider} onChange={(e) => setProvider(e.target.value)}>
             <option value="moncash">MonCash</option>
             <option value="natcash">NatCash</option>
@@ -56,7 +61,7 @@ export default function ConsolePage() {
         </div>
         <Button
           disabled={!testKey || busy}
-          onClick={() => run(() => callPublicApi(`/${provider}/payments`, apiKey, { method: "POST", headers: { "Idempotency-Key": newKey() }, body: { amount, currency: "HTG", phone, reference: `console_${Date.now()}` } }))}
+          onClick={() => run(() => callPublicApi(`/${provider}/${operation}`, apiKey, { method: "POST", headers: { "Idempotency-Key": newKey() }, body: { amount, currency: "HTG", phone, reference: `console_${Date.now()}` } }))}
         >
           {t("con.create")}
         </Button>

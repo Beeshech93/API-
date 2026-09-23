@@ -33,6 +33,10 @@ export class LiveProvider implements PaymentProviderClient {
     return this.notReady();
   }
 
+  async createTransfer(_input: CreateProviderPaymentInput): Promise<ProviderPayment> {
+    return this.notReady();
+  }
+
   async getPayment(_network: NetworkCode, _providerTransactionId: string): Promise<ProviderPayment> {
     return this.notReady();
   }

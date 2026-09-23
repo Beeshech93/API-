@@ -72,3 +72,12 @@ export function requirePermission(permission: string) {
     next();
   };
 }
+
+export function requireAnyPermission(...permissions: string[]) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!permissions.some((p) => req.apiAuth?.permissions.includes(p))) {
+      return next(new AppError("FORBIDDEN", `This API key needs one of these permissions: ${permissions.join(", ")}.`));
+    }
+    next();
+  };
+}

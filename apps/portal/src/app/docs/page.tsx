@@ -17,11 +17,17 @@ const ENDPOINTS = [
   ["GET", "/api/v1/moncash/transactions/{transaction_id}", "transactions:read"],
   ["GET", "/api/v1/moncash/transactions", "transactions:read"],
   ["GET", "/api/v1/moncash/balance", "balance:read"],
+  ["POST", "/api/v1/moncash/transfers", "transfers:create"],
+  ["GET", "/api/v1/moncash/transfers/{transaction_id}", "transfers:read"],
+  ["GET", "/api/v1/moncash/transfers", "transfers:read"],
   ["POST", "/api/v1/natcash/payments", "payments:create"],
+  ["POST", "/api/v1/natcash/transfers", "transfers:create"],
+  ["GET", "/api/v1/natcash/transfers/{transaction_id}", "transfers:read"],
+  ["GET", "/api/v1/natcash/transfers", "transfers:read"],
   ["GET", "/api/v1/natcash/transactions/{transaction_id}", "transactions:read"],
   ["GET", "/api/v1/natcash/transactions", "transactions:read"],
   ["GET", "/api/v1/natcash/balance", "balance:read"],
-  ["POST", "/api/v1/sandbox/transactions/{transaction_id}/simulate", "payments:create (TEST)"],
+  ["POST", "/api/v1/sandbox/transactions/{transaction_id}/simulate", "payments:create | transfers:create (TEST)"],
 ];
 
 const ERRORS = [
@@ -100,6 +106,13 @@ export default function DocsPage() {
                 <LangTabs group="payment" />
                 <p className="text-sm text-slate-500">{t("doc.response")} — 201</p>
                 <Code>{s.paymentResponse}</Code>
+              </>
+            )}
+            {id === "transfers" && (
+              <>
+                <LangTabs group="transfer" />
+                <p className="text-sm text-slate-500">{t("doc.response")} — 201</p>
+                <Code>{s.transferResponse}</Code>
               </>
             )}
             {id === "transactions" && <><LangTabs group="transaction" /><Code>{`GET /api/v1/moncash/transactions?limit=25&status=completed`}</Code></>}
