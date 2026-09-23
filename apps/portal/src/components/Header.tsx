@@ -20,7 +20,6 @@ export function Header() {
           Haiti<span className="text-brand">Pay</span>
         </Link>
         <div className="flex gap-3 sm:gap-6 text-sm items-center">
-          <Link href="/#plans" className="hidden md:inline text-slate-600 hover:text-navy">{t("nav.plans")}</Link>
           <Link href="/docs" className="hidden sm:inline text-slate-600 hover:text-navy">{t("nav.docs")}</Link>
           <div role="group" aria-label="Language" className="flex rounded-full border border-slate-300 overflow-hidden">
             {LOCALES.map((code) => (

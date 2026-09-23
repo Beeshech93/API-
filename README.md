@@ -1,12 +1,12 @@
 # HaitiPay API
 
 One API for **MonCash** and **NatCash**. Clients get an API key (`hp_live_…` / `hp_test_…`);
-every request goes through our backend, which validates the key, permissions, plan,
-limits and quota before anything reaches the payment provider. Provider
+every request goes through our backend, which validates the key, permissions,
+LIVE access and rate limits before anything reaches the payment provider. Provider
 credentials belong to the platform operator only and never reach a client or a browser.
 
 ```
-CLIENT → API KEY → HAITIPAY API → validation → plan / limits / quota → PaymentService → provider → MonCash / NatCash
+CLIENT → API KEY → HAITIPAY API → validation → LIVE access / rate limits → PaymentService → provider → MonCash / NatCash
 ```
 
 ## What's here
@@ -17,9 +17,8 @@ CLIENT → API KEY → HAITIPAY API → validation → plan / limits / quota →
 
 ## Status
 
-- **Works end to end:** signup/login (rotating httpOnly refresh tokens), plans & subscriptions (trial →
-  admin-confirmed activation), API keys with permissions, idempotent payments **and transfers (send money)** on both MonCash and NatCash — payouts draw only on the client's collected balance, reserved atomically — quotes/fees, HMAC webhooks
-  (SSRF-protected), rate limits per client / key / endpoint / IP, atomic monthly quota, API + audit logs,
+- **Works end to end:** signup/login (rotating httpOnly refresh tokens), API keys with permissions, idempotent payments **and transfers (send money)** on both MonCash and NatCash — payouts draw only on the client's collected balance, reserved atomically — quotes/fees, HMAC webhooks
+  (SSRF-protected), per-client LIVE access approval, rate limits per client / key / endpoint / IP, API + audit logs,
   admin panel, and a deterministic **sandbox** that never moves money.
 - **LIVE processing** is wired to the payment provider from its public API docs
   (`apps/api/src/providers/live.provider.ts`): every LIVE request is validated, priced and
@@ -41,7 +40,7 @@ CLIENT → API KEY → HAITIPAY API → validation → plan / limits / quota →
 cp .env.example apps/api/.env      # then fill it in
 npm install
 npm run prisma:migrate --workspace @ayitipay/api
-npx tsx apps/api/prisma/seed.ts    # plans, providers, fee settings
+npx tsx apps/api/prisma/seed.ts    # providers, fee and limit settings
 npm run dev:api                    # :4000
 npm run dev:portal                 # :3000
 npm test

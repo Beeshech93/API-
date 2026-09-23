@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useErrorMessage, useT } from "@/lib/i18n";
-import { BarChart, Card, ErrorNote, PageTitle, ProgressBar, Table } from "@/components/ui";
+import { BarChart, Card, ErrorNote, PageTitle, Table } from "@/components/ui";
 
-interface Usage { limit: number | null; history: { period: string; requests: number; transactions: number }[] }
+interface Usage { history: { period: string; requests: number; transactions: number }[] }
 
 export default function UsagePage() {
   const t = useT();
@@ -28,10 +28,9 @@ export default function UsagePage() {
           <Card className="p-5 mb-6">
             <div className="flex justify-between text-sm mb-2">
               <span className="font-semibold text-navy">{current?.period ?? "—"}</span>
-              <span>{current?.requests ?? 0} / {data.limit ?? "∞"}</span>
+              <span>{current?.requests ?? 0}</span>
             </div>
-            <ProgressBar value={current?.requests ?? 0} max={data.limit} />
-            <p className="text-xs text-slate-500 mt-2">{t("usage.liveOnly")}</p>
+            <p className="text-xs text-slate-500">{t("usage.liveOnly")}</p>
           </Card>
           <Card className="p-5 mb-6">
             <p className="font-semibold text-navy mb-3">{t("usage.history")}</p>

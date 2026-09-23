@@ -1,11 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { API_URL } from "@/lib/apiClient";
 import { useT } from "@/lib/i18n";
-
-interface Plan { code: string; name: string; price: number | null; monthly_request_limit: number | null; max_api_keys: number | null; rate_limit_per_minute: number | null; features: string[] }
 
 const SNIPPET = `curl -X POST ${API_URL}/api/v1/moncash/payments \\
   -H "Authorization: Bearer hp_test_xxxxxxxx" \\
@@ -16,12 +13,6 @@ const SNIPPET = `curl -X POST ${API_URL}/api/v1/moncash/payments \\
 
 export default function Landing() {
   const t = useT();
-  const [plans, setPlans] = useState<Plan[]>([]);
-
-  useEffect(() => {
-    fetch(`${API_URL}/api/v1/plans`).then((r) => r.json()).then((d) => setPlans(d.plans ?? [])).catch(() => {});
-  }, []);
-
   return (
     <div className="bg-white text-slate-700">
       <section className="relative overflow-hidden">
@@ -32,7 +23,6 @@ export default function Landing() {
           <div className="mt-8 flex flex-wrap gap-3 justify-center">
             <Link href="/signup" className="bg-brand hover:bg-brand-600 text-white px-6 py-3 rounded-full font-semibold">{t("land.cta.start")}</Link>
             <Link href="/docs" className="border border-brand text-brand hover:bg-brand-50 px-6 py-3 rounded-full font-semibold">{t("land.cta.docs")}</Link>
-            <Link href="/#plans" className="border border-brand text-brand hover:bg-brand-50 px-6 py-3 rounded-full font-semibold">{t("land.cta.plans")}</Link>
           </div>
           <pre className="mt-12 mx-auto max-w-2xl text-left text-xs sm:text-sm bg-navy border border-navy rounded-2xl p-5 overflow-x-auto text-emerald-100 shadow-lg"><code>{SNIPPET}</code></pre>
         </div>
@@ -65,23 +55,6 @@ export default function Landing() {
         <div className="grid md:grid-cols-2 gap-4">
           <Card><h3 className="text-navy font-semibold">{t("land.moncash.title")}</h3><p className="text-sm text-slate-500 mt-1">{t("land.moncash.body")}</p></Card>
           <Card><h3 className="text-navy font-semibold">{t("land.natcash.title")}</h3><p className="text-sm text-slate-500 mt-1">{t("land.natcash.body")}</p></Card>
-        </div>
-      </Section>
-
-      <Section id="plans" title={t("land.plans.title")} subtitle={t("land.plans.sub")}>
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {plans.map((p) => (
-            <div key={p.code} className={`rounded-2xl p-6 flex flex-col border ${p.code === "BUSINESS" ? "border-brand bg-brand-50 ring-1 ring-brand" : "border-slate-200 bg-white"} shadow-sm`}>
-              <h3 className="text-navy font-bold text-lg">{p.name}</h3>
-              <p className="text-3xl font-extrabold text-navy mt-2">{p.price === null ? t("plans.custom") : `$${p.price}`}{p.price !== null && <span className="text-sm font-normal text-slate-500"> / {t("plans.month")}</span>}</p>
-              <ul className="mt-4 space-y-1.5 text-sm text-slate-600 flex-1">
-                <li>{p.monthly_request_limit === null ? t("plans.customVolume") : `${new Intl.NumberFormat().format(p.monthly_request_limit)} ${t("plans.requestsMonth")}`}</li>
-                <li>{p.max_api_keys === null ? t("plans.customKeys") : `${p.max_api_keys} ${t("plans.keys")}`}</li>
-                {p.features.map((f) => <li key={f}>✓ {t(`feature.${f}`)}</li>)}
-              </ul>
-              <Link href={p.price === null ? "/signup" : "/signup"} className="mt-5 text-center bg-brand hover:bg-brand-600 text-white rounded-full py-2 font-semibold text-sm">{p.price === null ? t("billing.contactSales") : t("land.cta.start")}</Link>
-            </div>
-          ))}
         </div>
       </Section>
 

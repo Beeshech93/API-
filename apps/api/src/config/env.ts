@@ -30,7 +30,6 @@ export const env = {
   apiPublicUrl: (process.env.API_PUBLIC_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "")).replace(/\/+$/, ""),
   // 32-byte key (base64 or hex) that encrypts secrets stored in the database.
   secretsKey: process.env.CREDENTIALS_ENCRYPTION_KEY ?? "",
-  trialDays: Number(process.env.TRIAL_DAYS ?? 14),
   // Display name is shown to administrators only; it lives here (not in code)
   // so the public repository stays provider-neutral.
   provider: {

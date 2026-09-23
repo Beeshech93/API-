@@ -2,7 +2,7 @@ import { ApiEnvironment } from "@prisma/client";
 import { prisma } from "@/utils/prisma";
 import { AppError } from "@/utils/errors";
 import { extractKeyPrefix, generateApiKey, maskApiKey, verifyApiKey } from "@/utils/apiKeyCrypto";
-import { getEntitlements, MAX_TEST_KEYS } from "@/services/entitlements.service";
+import { assertLiveAllowed, getLimits, MAX_TEST_KEYS } from "@/services/limits.service";
 import { audit } from "@/services/audit.service";
 
 export const PERMISSIONS = [
@@ -54,12 +54,10 @@ export async function createKey(
   });
 
   if (input.environment === "LIVE") {
-    const entitlements = await getEntitlements(clientId);
-    if (!entitlements.active) {
-      throw new AppError("SUBSCRIPTION_REQUIRED", "An active subscription is required to create LIVE API keys.");
-    }
-    if (entitlements.maxLiveKeys !== null && activeOfEnvironment >= entitlements.maxLiveKeys) {
-      throw new AppError("FORBIDDEN", `Your plan allows ${entitlements.maxLiveKeys} active LIVE API key(s).`);
+    const [limits, client] = await Promise.all([getLimits(), prisma.client.findUnique({ where: { id: clientId }, select: { liveEnabled: true } })]);
+    assertLiveAllowed(limits, { liveEnabled: client?.liveEnabled ?? false });
+    if (activeOfEnvironment >= limits.maxLiveKeys) {
+      throw new AppError("FORBIDDEN", `You can have at most ${limits.maxLiveKeys} active LIVE API keys.`);
     }
   } else if (activeOfEnvironment >= MAX_TEST_KEYS) {
     throw new AppError("FORBIDDEN", `You can have at most ${MAX_TEST_KEYS} active TEST API keys.`);

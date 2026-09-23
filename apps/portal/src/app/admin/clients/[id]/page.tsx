@@ -4,12 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useErrorMessage, useT } from "@/lib/i18n";
-import { Badge, Button, Card, ErrorNote, PageTitle, Select, Table } from "@/components/ui";
+import { Badge, Button, Card, ErrorNote, PageTitle, Table } from "@/components/ui";
 
 interface Detail {
-  client: { id: string; name: string; status: string; created_at: string };
+  client: { id: string; name: string; status: string; live_enabled: boolean; created_at: string };
   users: { id: string; email: string; role: string }[];
-  subscription: { plan: { code: string; name: string }; status: string; end: string } | null;
   api_keys: { id: string; name: string; environment: string; last4: string; status: string; last_used_at: string | null }[];
   usage: { period: string; requests: number; transactions: number };
   transactions: { id: string; provider: string; status: string; amount: number; currency: string; created_at: string }[];
@@ -20,14 +19,11 @@ export default function ClientDetail({ params }: { params: { id: string } }) {
   const t = useT();
   const errorMessage = useErrorMessage();
   const [d, setD] = useState<Detail | null>(null);
-  const [plans, setPlans] = useState<{ code: string; name: string }[]>([]);
-  const [plan, setPlan] = useState("STARTER");
   const [error, setError] = useState<string | null>(null);
 
   const load = () => api<Detail>(`/admin/clients/${params.id}`).then(setD).catch((e) => setError(errorMessage(e)));
   useEffect(() => {
     load();
-    api<{ plans: { code: string; name: string }[] }>("/admin/plans").then((p) => setPlans(p.plans));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -49,13 +45,11 @@ export default function ClientDetail({ params }: { params: { id: string } }) {
       <ErrorNote message={error} />
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         <Card className="p-5">
-          <h2 className="font-semibold text-navy mb-3">{t("billing.subscription")}</h2>
-          {d.subscription ? <p className="text-sm mb-3">{d.subscription.plan.name} · <Badge value={d.subscription.status} label={t(`status.${d.subscription.status}`)} /> · {new Date(d.subscription.end).toLocaleDateString()}</p> : <p className="text-sm text-slate-500 mb-3">{t("overview.noPlanTitle")}</p>}
-          <div className="flex flex-wrap gap-2 items-end">
-            <div className="w-40"><Select label={t("overview.plan")} value={plan} onChange={(e) => setPlan(e.target.value)}>{plans.map((p) => <option key={p.code} value={p.code}>{p.name}</option>)}</Select></div>
-            <Button onClick={() => act("plan", { plan_code: plan })}>{t("admin.changePlan")}</Button>
-            <Button variant="secondary" onClick={() => act("activate-subscription")} disabled={!d.subscription}>{t("admin.activate")}</Button>
-          </div>
+          <h2 className="font-semibold text-navy mb-3">{t("admin.liveAccess")}</h2>
+          <p className="text-sm mb-3"><Badge value={d.client.live_enabled ? "active" : "none"} label={d.client.live_enabled ? t("overview.liveOn") : t("overview.liveOff")} /></p>
+          {d.client.live_enabled
+            ? <Button variant="secondary" onClick={() => confirm(t("admin.confirmDisableLive")) && act("live-access", { enabled: false })}>{t("admin.disableLive")}</Button>
+            : <Button onClick={() => act("live-access", { enabled: true })}>{t("admin.enableLive")}</Button>}
         </Card>
         <Card className="p-5">
           <h2 className="font-semibold text-navy mb-3">{t("admin.account")}</h2>

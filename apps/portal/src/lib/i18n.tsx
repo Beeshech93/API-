@@ -68,7 +68,7 @@ export function useErrorMessage() {
     const message = (err as { message?: string })?.message;
     if (code && t(`err.${code}`) !== `err.${code}`) {
       // These codes carry actionable detail from the server (which field, which limit).
-      const detailed = ["INVALID_REQUEST", "INVALID_AMOUNT", "FORBIDDEN", "SUBSCRIPTION_REQUIRED"].includes(code);
+      const detailed = ["INVALID_REQUEST", "INVALID_AMOUNT", "FORBIDDEN"].includes(code);
       return detailed && message ? `${t(`err.${code}`)} (${message})` : t(`err.${code}`);
     }
     return message || t(fallbackKey);

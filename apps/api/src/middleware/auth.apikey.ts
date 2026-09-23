@@ -3,7 +3,7 @@ import { prisma } from "@/utils/prisma";
 import { env } from "@/config/env";
 import { AppError } from "@/utils/errors";
 import { authenticate } from "@/services/apikey.service";
-import { getEntitlements } from "@/services/entitlements.service";
+import { assertLiveAllowed, getLimits } from "@/services/limits.service";
 import { hit } from "@/services/ratelimit.service";
 import { consumeRequest } from "@/services/usage.service";
 
@@ -14,16 +14,9 @@ function bearer(req: Request): string | null {
   return typeof alt === "string" ? alt.trim() : null;
 }
 
-function secondsUntilNextMonth(): number {
-  const now = new Date();
-  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
-  return Math.max(1, Math.ceil((next - now.getTime()) / 1000));
-}
-
 // Authenticates the API key, then enforces — in this order — client status,
-// subscription (LIVE only), rate limits per client / API key / endpoint, and
-// the monthly request quota (LIVE only). Sandbox (TEST) traffic never consumes
-// the paid quota.
+// LIVE access (LIVE only), and rate limits per client / API key / endpoint.
+// LIVE requests are also counted for usage statistics.
 export async function requireApiKey(req: Request, res: Response, next: NextFunction) {
   try {
     const token = bearer(req);
@@ -32,15 +25,13 @@ export async function requireApiKey(req: Request, res: Response, next: NextFunct
     const auth = await authenticate(token);
     req.apiAuth = auth;
 
-    const client = await prisma.client.findUnique({ where: { id: auth.clientId }, select: { status: true } });
+    const client = await prisma.client.findUnique({ where: { id: auth.clientId }, select: { status: true, liveEnabled: true } });
     if (!client || client.status === "SUSPENDED") throw new AppError("FORBIDDEN", "This account is suspended.");
 
-    const entitlements = await getEntitlements(auth.clientId);
-    if (auth.environment === "LIVE" && !entitlements.active) {
-      throw new AppError("SUBSCRIPTION_REQUIRED", "An active subscription is required to use LIVE API keys.");
-    }
+    const limits = await getLimits();
+    if (auth.environment === "LIVE") assertLiveAllowed(limits, client);
 
-    const limit = auth.environment === "LIVE" ? entitlements.rateLimitPerMinute : env.testRateLimitPerMinute;
+    const limit = auth.environment === "LIVE" ? limits.rateLimitPerMinute : env.testRateLimitPerMinute;
     const isWrite = req.method !== "GET";
     const checks = await Promise.all([
       hit(`client:${auth.clientId}:${auth.environment}`, limit),
@@ -53,10 +44,7 @@ export async function requireApiKey(req: Request, res: Response, next: NextFunct
     if (blocked) throw new AppError("RATE_LIMIT_EXCEEDED", "Too many requests", { retryAfter: blocked.retryAfter });
 
     if (auth.environment === "LIVE") {
-      const used = await consumeRequest(auth.clientId, entitlements.monthlyRequestLimit);
-      if (used === null) {
-        throw new AppError("RATE_LIMIT_EXCEEDED", "Monthly request quota exceeded for your plan.", { retryAfter: secondsUntilNextMonth() });
-      }
+      await consumeRequest(auth.clientId, null); // usage statistics only: there is no quota
     }
     next();
   } catch (error) {

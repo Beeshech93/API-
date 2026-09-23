@@ -6,7 +6,7 @@ import { useErrorMessage, useT } from "@/lib/i18n";
 import { Badge, ErrorNote, PageTitle, Stat } from "@/components/ui";
 
 interface Overview {
-  total_clients: number; active_subscriptions: number; monthly_revenue: number; api_requests: number;
+  total_clients: number; live_clients: number; api_requests: number;
   transactions: number; failed_transactions: number;
   volume: { provider: string; currency: string; amount: number }[];
   system_status: { code: string; name: string; status: string }[];
@@ -29,8 +29,7 @@ export default function AdminOverview() {
       <PageTitle title={t("admin.overview")} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <Stat label={t("admin.totalClients")} value={d.total_clients} />
-        <Stat label={t("admin.activeSubs")} value={d.active_subscriptions} />
-        <Stat label={t("admin.revenue")} value={`$${d.monthly_revenue}`} />
+        <Stat label={t("admin.liveClients")} value={d.live_clients} />
         <Stat label={t("overview.requests")} value={new Intl.NumberFormat().format(d.api_requests)} />
         <Stat label={t("overview.transactions")} value={d.transactions} hint="LIVE" />
         <Stat label={t("overview.failed")} value={d.failed_transactions} tone={d.failed_transactions ? "bad" : "default"} />

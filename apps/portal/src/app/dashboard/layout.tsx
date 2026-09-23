@@ -8,7 +8,6 @@ const ITEMS: NavItem[] = [
   { href: "/dashboard/api-logs", key: "nav.apiLogs" },
   { href: "/docs", key: "nav.docs" },
   { href: "/dashboard/usage", key: "nav.usage" },
-  { href: "/dashboard/billing", key: "nav.billing" },
   { href: "/dashboard/settings", key: "nav.settings" },
   { href: "/dashboard/support", key: "nav.support" },
 ];

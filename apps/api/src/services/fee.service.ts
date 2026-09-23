@@ -52,16 +52,11 @@ export function assertAmountInRange(amount: number, currency: "HTG" | "USD", con
   }
 }
 
-// fee = amount * (platform % [+ provider %]) + fixed fee. A plan may override
-// the platform percentage. Computed before any operation runs and stored on
-// the transaction so the client is charged exactly what the quote said.
-export function computeQuote(
-  amount: number,
-  currency: "HTG" | "USD",
-  config: FeeConfig,
-  planFeeBps: number | null
-): Quote {
-  const bps = (planFeeBps ?? config.percentageBps) + config.providerFeeBps;
+// fee = amount * (platform % [+ provider %]) + fixed fee. Computed before any
+// operation runs and stored on the transaction so the client is charged exactly
+// what the quote said.
+export function computeQuote(amount: number, currency: "HTG" | "USD", config: FeeConfig): Quote {
+  const bps = config.percentageBps + config.providerFeeBps;
   const gross = toDecimal(amount);
   const fee = round2(gross.mul(bps).div(10000).plus(config.fixedFee[currency]));
   return { amount, fee: fee.toNumber(), total: round2(gross.plus(fee)).toNumber(), currency };

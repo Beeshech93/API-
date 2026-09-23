@@ -97,6 +97,8 @@ model Client {
   id        String       @id @default(uuid())
   name      String
   status    ClientStatus @default(ACTIVE)
+  // LIVE keys work only when an administrator has enabled LIVE access (see limits).
+  liveEnabled Boolean    @default(false) @map("live_enabled")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 

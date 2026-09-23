@@ -6,7 +6,6 @@ import { newTransactionId } from "@/utils/ids";
 import { getProvider } from "@/providers/provider.factory";
 import { NetworkCode, ProviderTxStatus } from "@/providers/provider.types";
 import { assertAmountInRange, computeQuote, getFeeConfig } from "@/services/fee.service";
-import { getEntitlements } from "@/services/entitlements.service";
 import { enqueueEvent, WebhookEvent } from "@/services/webhook.service";
 import { recordTransaction } from "@/services/usage.service";
 import { logProviderCall } from "@/services/provider.service";
@@ -176,8 +175,7 @@ async function createOperation(
   // recipient...) before anything is created or any funds are reserved.
   await getProvider(ctx.environment).validate?.(type, providerInput);
 
-  const entitlements = await getEntitlements(ctx.clientId);
-  const quote = computeQuote(body.amount, body.currency, config, entitlements.transactionFeeBps);
+  const quote = computeQuote(body.amount, body.currency, config);
 
   const row = {
     id: newTransactionId(),

@@ -9,9 +9,8 @@ import { requireUser } from "@/middleware/auth.jwt";
 import { createKeySchema, createWebhookSchema, listQuerySchema } from "@/validators/schemas";
 import * as keys from "@/services/apikey.service";
 import * as webhooks from "@/services/webhook.service";
-import * as billing from "@/services/billing.service";
 import * as payments from "@/services/payment.service";
-import { getEntitlements } from "@/services/entitlements.service";
+import { getLimits, isLiveAllowed } from "@/services/limits.service";
 import { getUsage } from "@/services/usage.service";
 
 export const portalRouter = Router();
@@ -25,8 +24,9 @@ portalRouter.get(
   "/overview",
   asyncHandler(async (req, res) => {
     const clientId = req.user!.clientId;
-    const [entitlements, usage, activeKeys, statusGroups] = await Promise.all([
-      getEntitlements(clientId),
+    const [limits, client, usage, activeKeys, statusGroups] = await Promise.all([
+      getLimits(),
+      prisma.client.findUnique({ where: { id: clientId }, select: { liveEnabled: true } }),
       getUsage(clientId),
       prisma.apiKey.count({ where: { clientId, revokedAt: null } }),
       prisma.transaction.groupBy({ by: ["status"], where: { clientId }, _count: true }),
@@ -56,15 +56,8 @@ portalRouter.get(
 
     res.json({
       success: true,
-      plan: entitlements.subscription ? billing.serializePlan(entitlements.subscription.plan) : null,
-      subscription_status: entitlements.subscription?.status.toLowerCase() ?? "none",
-      live_access: entitlements.active,
-      requests: {
-        used: usage.requests,
-        limit: entitlements.monthlyRequestLimit,
-        remaining: entitlements.monthlyRequestLimit === null ? null : Math.max(0, entitlements.monthlyRequestLimit - usage.requests),
-        period: usage.period,
-      },
+      live_access: isLiveAllowed(limits, { liveEnabled: client?.liveEnabled ?? false }),
+      requests: { used: usage.requests, period: usage.period },
       transactions: { total, completed, failed },
       success_rate: finished ? Math.round((completed / finished) * 1000) / 10 : null,
       api_uptime: uptime[0]?.total ? Math.round((1 - uptime[0].errors / uptime[0].total) * 10000) / 100 : null,
@@ -76,11 +69,9 @@ portalRouter.get(
 
 portalRouter.get("/usage", asyncHandler(async (req, res) => {
   const clientId = req.user!.clientId;
-  const entitlements = await getEntitlements(clientId);
   const history = await prisma.usageRecord.findMany({ where: { clientId }, orderBy: { period: "desc" }, take: 12 });
   res.json({
     success: true,
-    limit: entitlements.monthlyRequestLimit,
     history: history.map((h) => ({ period: h.period, requests: h.requests, transactions: h.transactions })),
   });
 }));
@@ -183,19 +174,4 @@ portalRouter.get("/api-logs", asyncHandler(async (req, res) => {
       response_time_ms: l.responseMs, ip: l.ip, provider: l.provider, environment: l.environment?.toLowerCase(), created_at: l.createdAt,
     })),
   });
-}));
-
-// ---- Billing -----------------------------------------------------------
-
-portalRouter.get("/billing", asyncHandler(async (req, res) => {
-  res.json({ success: true, ...(await billing.getBillingOverview(req.user!.clientId)), plans: await billing.listPublicPlans() });
-}));
-portalRouter.post("/billing/plan", asyncHandler(async (req, res) => {
-  const { plan_code } = z.object({ plan_code: z.string().min(1).max(30) }).parse(req.body);
-  await billing.selectPlan(req.user!.clientId, plan_code, actor(req));
-  res.json({ success: true, ...(await billing.getBillingOverview(req.user!.clientId)) });
-}));
-portalRouter.post("/billing/cancel", asyncHandler(async (req, res) => {
-  await billing.cancelSubscription(req.user!.clientId, actor(req));
-  res.json({ success: true, ...(await billing.getBillingOverview(req.user!.clientId)) });
 }));

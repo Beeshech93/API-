@@ -10,8 +10,8 @@ import { tbl } from "@/utils/sql";
 import { requireAdmin, requireUser } from "@/middleware/auth.jwt";
 import { ipRateLimit } from "@/middleware/rateLimit";
 import { audit } from "@/services/audit.service";
-import * as billing from "@/services/billing.service";
 import { getFeeConfig, saveFeeConfig } from "@/services/fee.service";
+import { getLimits, saveLimits } from "@/services/limits.service";
 import { checkProviders, listProviders } from "@/services/provider.service";
 import { clearConfig, getConfigSummary, saveConfig } from "@/services/providerConfig.service";
 import { getUsage } from "@/services/usage.service";
@@ -25,10 +25,9 @@ const actor = (req: import("express").Request) => ({ userId: req.user!.id, ip: c
 
 adminRouter.get("/overview", asyncHandler(async (_req, res) => {
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
-  const [clients, active, revenue, requests, tx, failed, volume, providers] = await Promise.all([
+  const [clients, liveClients, requests, tx, failed, volume, providers] = await Promise.all([
     prisma.client.count(),
-    prisma.subscription.count({ where: { status: { in: ["ACTIVE", "TRIAL"] } } }),
-    prisma.invoice.aggregate({ where: { status: "PAID", paidAt: { gte: monthStart } }, _sum: { amountCents: true } }),
+    prisma.client.count({ where: { liveEnabled: true } }),
     prisma.usageRecord.aggregate({ where: { period: `${monthStart.getUTCFullYear()}-${String(monthStart.getUTCMonth() + 1).padStart(2, "0")}` }, _sum: { requests: true } }),
     prisma.transaction.count({ where: { environment: "LIVE" } }),
     prisma.transaction.count({ where: { environment: "LIVE", status: "FAILED" } }),
@@ -38,8 +37,7 @@ adminRouter.get("/overview", asyncHandler(async (_req, res) => {
   res.json({
     success: true,
     total_clients: clients,
-    active_subscriptions: active,
-    monthly_revenue: (revenue._sum.amountCents ?? 0) / 100,
+    live_clients: liveClients,
     api_requests: requests._sum.requests ?? 0,
     transactions: tx,
     failed_transactions: failed,
@@ -54,7 +52,7 @@ adminRouter.get("/clients", asyncHandler(async (req, res) => {
   const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
   const clients = await prisma.client.findMany({
     where: search ? { OR: [{ name: { contains: search, mode: "insensitive" } }, { users: { some: { email: { contains: search, mode: "insensitive" } } } }] } : {},
-    include: { users: { select: { email: true, role: true } }, subscription: { include: { plan: true } } },
+    include: { users: { select: { email: true, role: true } } },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
@@ -62,8 +60,7 @@ adminRouter.get("/clients", asyncHandler(async (req, res) => {
     success: true,
     clients: clients.map((c) => ({
       id: c.id, name: c.name, status: c.status.toLowerCase(), created_at: c.createdAt,
-      users: c.users, plan: c.subscription?.plan.code ?? null, subscription_status: c.subscription?.status.toLowerCase() ?? "none",
-      subscription_end: c.subscription?.currentPeriodEnd ?? null,
+      users: c.users, live_enabled: c.liveEnabled,
     })),
   });
 }));
@@ -71,7 +68,7 @@ adminRouter.get("/clients", asyncHandler(async (req, res) => {
 adminRouter.get("/clients/:id", asyncHandler(async (req, res) => {
   const client = await prisma.client.findUnique({
     where: { id: req.params.id },
-    include: { users: { select: { id: true, email: true, name: true, role: true, createdAt: true } }, subscription: { include: { plan: true } }, apiKeys: true },
+    include: { users: { select: { id: true, email: true, name: true, role: true, createdAt: true } }, apiKeys: true },
   });
   if (!client) throw new AppError("NOT_FOUND", "Client not found.");
   const [usage, transactions, logs] = await Promise.all([
@@ -81,9 +78,8 @@ adminRouter.get("/clients/:id", asyncHandler(async (req, res) => {
   ]);
   res.json({
     success: true,
-    client: { id: client.id, name: client.name, status: client.status.toLowerCase(), created_at: client.createdAt },
+    client: { id: client.id, name: client.name, status: client.status.toLowerCase(), live_enabled: client.liveEnabled, created_at: client.createdAt },
     users: client.users,
-    subscription: client.subscription && { plan: billing.serializePlan(client.subscription.plan), status: client.subscription.status.toLowerCase(), end: client.subscription.currentPeriodEnd },
     api_keys: client.apiKeys.map((k) => ({ id: k.id, name: k.name, environment: k.environment.toLowerCase(), last4: k.last4, status: k.revokedAt ? "revoked" : "active", last_used_at: k.lastUsedAt })),
     usage,
     transactions: transactions.map((t) => ({ id: t.id, provider: t.provider.toLowerCase(), status: t.status.toLowerCase(), amount: Number(t.amount), currency: t.currency, created_at: t.createdAt })),
@@ -92,7 +88,7 @@ adminRouter.get("/clients/:id", asyncHandler(async (req, res) => {
 }));
 
 adminRouter.post("/clients", asyncHandler(async (req, res) => {
-  const body = signupSchema.extend({ plan_code: z.string().optional() }).parse(req.body);
+  const body = signupSchema.parse(req.body);
   if (await prisma.user.findUnique({ where: { email: body.email.toLowerCase() } })) throw new AppError("CONFLICT", "Email already registered.");
   const passwordHash = await bcrypt.hash(body.password, 12);
   const created = await prisma.$transaction(async (tx) => {
@@ -100,7 +96,6 @@ adminRouter.post("/clients", asyncHandler(async (req, res) => {
     await tx.user.create({ data: { clientId: client.id, email: body.email.toLowerCase(), passwordHash, name: body.name } });
     return client;
   });
-  if (body.plan_code) await billing.selectPlan(created.id, body.plan_code, actor(req));
   await audit({ action: "admin.client_created", actorUserId: req.user!.id, clientId: created.id, ip: clientIp(req) });
   res.status(201).json({ success: true, client_id: created.id });
 }));
@@ -119,61 +114,17 @@ const setStatus = (status: "ACTIVE" | "SUSPENDED") =>
 adminRouter.post("/clients/:id/suspend", setStatus("SUSPENDED"));
 adminRouter.post("/clients/:id/reactivate", setStatus("ACTIVE"));
 
-adminRouter.post("/clients/:id/plan", asyncHandler(async (req, res) => {
-  const body = z.object({
-    plan_code: z.string(),
-    custom_request_limit: z.number().int().positive().nullable().optional(),
-    custom_rate_limit: z.number().int().positive().nullable().optional(),
-  }).parse(req.body);
-  const plan = await prisma.plan.findUnique({ where: { code: body.plan_code.toUpperCase() } });
-  if (!plan) throw new AppError("NOT_FOUND", "Plan not found.");
-  const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  await prisma.subscription.upsert({
-    where: { clientId: req.params.id },
-    create: { clientId: req.params.id, planId: plan.id, status: "ACTIVE", currentPeriodEnd: end, customRequestLimit: body.custom_request_limit ?? null, customRateLimit: body.custom_rate_limit ?? null },
-    update: { planId: plan.id, customRequestLimit: body.custom_request_limit ?? null, customRateLimit: body.custom_rate_limit ?? null },
-  });
-  await audit({ action: "admin.plan_changed", actorUserId: req.user!.id, clientId: req.params.id, targetType: "plan", targetId: plan.id, ip: clientIp(req) });
-  res.json({ success: true });
+// Enables or disables LIVE access for a client (see settings/limits).
+adminRouter.post("/clients/:id/live-access", asyncHandler(async (req, res) => {
+  const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
+  const client = await prisma.client.findUnique({ where: { id: req.params.id } });
+  if (!client) throw new AppError("NOT_FOUND", "Client not found.");
+  await prisma.client.update({ where: { id: client.id }, data: { liveEnabled: enabled } });
+  await audit({ action: enabled ? "admin.live_access_enabled" : "admin.live_access_disabled", actorUserId: req.user!.id, clientId: client.id, ip: clientIp(req) });
+  res.json({ success: true, live_enabled: enabled });
 }));
 
-adminRouter.post("/clients/:id/activate-subscription", asyncHandler(async (req, res) => {
-  await billing.activateSubscription(req.params.id, req.user!.id);
-  res.json({ success: true });
-}));
-
-// ---- Plans & fees (editable by the administrator) --------------------------
-
-adminRouter.get("/plans", asyncHandler(async (_req, res) => {
-  const plans = await prisma.plan.findMany({ orderBy: { sortOrder: "asc" } });
-  res.json({ success: true, plans: plans.map(billing.serializePlan) });
-}));
-
-adminRouter.patch("/plans/:id", asyncHandler(async (req, res) => {
-  const body = z.object({
-    name: z.string().min(1).max(60).optional(),
-    price: z.number().min(0).nullable().optional(),
-    monthly_request_limit: z.number().int().positive().nullable().optional(),
-    max_api_keys: z.number().int().positive().nullable().optional(),
-    rate_limit_per_minute: z.number().int().positive().nullable().optional(),
-    transaction_fee_bps: z.number().int().min(0).max(5000).nullable().optional(),
-    features: z.array(z.string().max(60)).max(30).optional(),
-    active: z.boolean().optional(),
-  }).parse(req.body);
-  const data: Prisma.PlanUpdateInput = {
-    ...(body.name !== undefined ? { name: body.name } : {}),
-    ...(body.price !== undefined ? { priceCents: body.price === null ? null : Math.round(body.price * 100) } : {}),
-    ...(body.monthly_request_limit !== undefined ? { monthlyRequestLimit: body.monthly_request_limit } : {}),
-    ...(body.max_api_keys !== undefined ? { maxApiKeys: body.max_api_keys } : {}),
-    ...(body.rate_limit_per_minute !== undefined ? { rateLimitPerMinute: body.rate_limit_per_minute } : {}),
-    ...(body.transaction_fee_bps !== undefined ? { transactionFeeBps: body.transaction_fee_bps } : {}),
-    ...(body.features !== undefined ? { features: body.features } : {}),
-    ...(body.active !== undefined ? { active: body.active } : {}),
-  };
-  const plan = await prisma.plan.update({ where: { id: req.params.id }, data });
-  await audit({ action: "admin.plan_updated", actorUserId: req.user!.id, targetType: "plan", targetId: plan.id, ip: clientIp(req), metadata: { fields: Object.keys(body) } });
-  res.json({ success: true, plan: billing.serializePlan(plan) });
-}));
+// ---- Fees & limits (editable by the administrator) -------------------------
 
 const feeSchema = z.object({
   percentageBps: z.number().int().min(0).max(5000),
@@ -187,6 +138,18 @@ adminRouter.put("/settings/fees", asyncHandler(async (req, res) => {
   const fees = await saveFeeConfig(feeSchema.parse(req.body));
   await audit({ action: "admin.fees_updated", actorUserId: req.user!.id, ip: clientIp(req) });
   res.json({ success: true, fees });
+}));
+
+const limitsSchema = z.object({
+  rateLimitPerMinute: z.number().int().min(1).max(100_000),
+  maxLiveKeys: z.number().int().min(1).max(1000),
+  requireLiveApproval: z.boolean(),
+});
+adminRouter.get("/settings/limits", asyncHandler(async (_req, res) => res.json({ success: true, limits: await getLimits() })));
+adminRouter.put("/settings/limits", asyncHandler(async (req, res) => {
+  const limits = await saveLimits(limitsSchema.parse(req.body));
+  await audit({ action: "admin.limits_updated", actorUserId: req.user!.id, ip: clientIp(req), metadata: { ...limits } });
+  res.json({ success: true, limits });
 }));
 
 // ---- Providers ---------------------------------------------------

@@ -33,10 +33,8 @@ const ENDPOINTS = [
 const ERRORS = [
   ["INVALID_API_KEY", "401"], ["UNAUTHORIZED", "401"], ["FORBIDDEN", "403"], ["INVALID_REQUEST", "400 / 422"], ["INVALID_AMOUNT", "400"], ["INVALID_PHONE", "400"],
   ["INSUFFICIENT_BALANCE", "402"], ["PROVIDER_ERROR", "502"], ["PROVIDER_TIMEOUT", "504"], ["TRANSACTION_FAILED", "422"], ["TRANSACTION_NOT_FOUND", "404"],
-  ["RATE_LIMIT_EXCEEDED", "429"], ["SUBSCRIPTION_REQUIRED", "402"],
+  ["RATE_LIMIT_EXCEEDED", "429"],
 ];
-
-const PLAN_LIMITS = [["Starter", "$29", "1,000", "1", "100"], ["Business", "$79", "10,000", "5", "500"], ["Pro", "$199", "50,000", "20", "2,000"], ["Enterprise", "—", "custom", "custom", "custom"]];
 
 function Code({ children }: { children: string }) {
   return <pre className="bg-navy text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto"><code>{children}</code></pre>;
@@ -99,7 +97,7 @@ export default function DocsPage() {
             )}
 
             {id === "auth" && <LangTabs group="auth" />}
-            {id === "keys" && <Code>{`hp_live_xxxxxxxxxxxxxxxxxxxx   # LIVE   (needs an active subscription)\nhp_test_xxxxxxxxxxxxxxxxxxxx   # TEST   (sandbox, never moves real money)\n\n# After creation only the masked key is shown:\nhp_live_••••••••••••91KD`}</Code>}
+            {id === "keys" && <Code>{`hp_live_xxxxxxxxxxxxxxxxxxxx   # LIVE   (needs LIVE access enabled for your account)\nhp_test_xxxxxxxxxxxxxxxxxxxx   # TEST   (sandbox, never moves real money)\n\n# After creation only the masked key is shown:\nhp_live_••••••••••••91KD`}</Code>}
             {(id === "moncash" || id === "natcash") && <LangTabs group={id === "moncash" ? "moncash" : "natcash"} />}
             {id === "payments" && (
               <>
@@ -133,8 +131,6 @@ export default function DocsPage() {
             )}
             {id === "limits" && (
               <>
-                <p className="text-sm text-slate-500 mt-3">{t("doc.plansTable")}</p>
-                <div className="overflow-x-auto"><table className="w-full text-sm bg-white border border-slate-200 rounded-xl"><thead><tr className="text-left text-slate-500 border-b bg-slate-50"><th className="p-3">Plan</th><th className="p-3">USD / {t("plans.month")}</th><th className="p-3">{t("plans.requestsMonth")}</th><th className="p-3">{t("plans.keys")}</th><th className="p-3">{t("plans.perMinute")}</th></tr></thead><tbody>{PLAN_LIMITS.map((r) => (<tr key={r[0]} className="border-b border-slate-100">{r.map((c, i) => <td key={i} className="p-3">{c}</td>)}</tr>))}</tbody></table></div>
                 <Code>{`HTTP/1.1 429 Too Many Requests\nRetry-After: 30\n\n{ "success": false, "error": { "code": "RATE_LIMIT_EXCEEDED", "message": "Too many requests", "request_id": "req_…", "retry_after": 30 } }`}</Code>
               </>
             )}

@@ -9,9 +9,7 @@ import {
   createPaymentSchema, createTransferSchema, idempotencyKeySchema, listQuerySchema, quoteQuerySchema, simulateSchema,
 } from "@/validators/schemas";
 import { computeQuote, assertAmountInRange, getFeeConfig } from "@/services/fee.service";
-import { getEntitlements } from "@/services/entitlements.service";
 import * as payments from "@/services/payment.service";
-import { listPublicPlans } from "@/services/billing.service";
 
 export const apiV1Router = Router();
 
@@ -25,13 +23,6 @@ apiV1Router.get("/health", (_req, res) => {
 });
 
 apiV1Router.get(
-  "/plans",
-  asyncHandler(async (_req, res) => {
-    res.json({ success: true, plans: await listPublicPlans() });
-  })
-);
-
-apiV1Router.get(
   "/quote",
   requireApiKey,
   requirePermission("payments:read"),
@@ -39,8 +30,7 @@ apiV1Router.get(
     const q = quoteQuerySchema.parse(req.query);
     const config = await getFeeConfig();
     assertAmountInRange(q.amount, q.currency, config);
-    const entitlements = await getEntitlements(req.apiAuth!.clientId);
-    res.json(computeQuote(q.amount, q.currency, config, entitlements.transactionFeeBps));
+    res.json(computeQuote(q.amount, q.currency, config));
   })
 );
 
