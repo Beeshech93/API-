@@ -8,28 +8,38 @@ function required(name: string, fallback?: string): string {
   return value;
 }
 
+const isProduction = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+
+// Provider (Bazik) credentials belong to the platform operator only. They are
+// read here from the backend environment and never stored in the database,
+// returned by any endpoint, or sent to a browser.
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
+  isProduction,
   port: Number(process.env.PORT ?? 4000),
   databaseUrl: required("DATABASE_URL"),
   jwt: {
     secret: required("JWT_SECRET", "dev-only-insecure-secret"),
-    expiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
+    accessTtlSeconds: Number(process.env.ACCESS_TOKEN_TTL_SECONDS ?? 15 * 60),
+    refreshTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 30),
   },
-  credentialsEncryptionKey: process.env.CREDENTIALS_ENCRYPTION_KEY ?? "",
   portalAppUrl: process.env.PORTAL_APP_URL ?? "http://localhost:3000",
-  // Vercel automatically sends this as a Bearer token when it invokes a
-  // cron-scheduled route (see vercel.json) — verified in
-  // internal.cron.routes.ts so the poll endpoint can't be triggered by
-  // anyone else. Empty in local dev, where the setInterval worker runs instead.
   cronSecret: process.env.CRON_SECRET ?? "",
-  platformDefaultFeeBps: Number(process.env.PLATFORM_DEFAULT_FEE_BPS ?? 150),
+  trialDays: Number(process.env.TRIAL_DAYS ?? 14),
+  bazik: {
+    apiUrl: process.env.BAZIK_API_URL ?? "",
+    apiKey: process.env.BAZIK_API_KEY ?? "",
+    secretKey: process.env.BAZIK_SECRET_KEY ?? "",
+    webhookSecret: process.env.BAZIK_WEBHOOK_SECRET ?? "",
+  },
   webhook: {
     maxAttempts: Number(process.env.WEBHOOK_MAX_ATTEMPTS ?? 6),
     pollMs: Number(process.env.WEBHOOK_WORKER_POLL_MS ?? 10000),
   },
-  rateLimit: {
-    testPerMinute: Number(process.env.RATE_LIMIT_TEST_PER_MIN ?? 60),
-    livePerMinute: Number(process.env.RATE_LIMIT_LIVE_PER_MIN ?? 120),
-  },
+  testRateLimitPerMinute: Number(process.env.RATE_LIMIT_TEST_PER_MIN ?? 60),
+  ipRateLimitPerMinute: Number(process.env.RATE_LIMIT_IP_PER_MIN ?? 600),
 } as const;
+
+export function isBazikConfigured(): boolean {
+  return Boolean(env.bazik.apiUrl && env.bazik.apiKey && env.bazik.secretKey);
+}

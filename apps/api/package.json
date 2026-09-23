@@ -13,11 +13,13 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts",
     "build:vercel": "esbuild src/vercel.entry.js --bundle --platform=node --target=node22 --format=cjs --external:@prisma/client --external:.prisma/client --outfile=dist/vercel.js",
-    "vercel-build": "DATABASE_URL=\"${DATABASE_URL_UNPOOLED:-$DATABASE_URL}\" prisma migrate deploy && npm run build:vercel"
+    "vercel-build": "export DATABASE_URL=\"${DATABASE_URL_UNPOOLED:-$DATABASE_URL}\" && prisma migrate deploy && tsx prisma/seed.ts && npm run build:vercel",
+    "admin:promote": "tsx scripts/promote-admin.ts"
   },
   "dependencies": {
     "@ayitipay/shared": "*",
     "@prisma/client": "^5.20.0",
+    "@vercel/functions": "^3.9.9",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

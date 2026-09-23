@@ -1,18 +1,21 @@
-import rateLimit from "express-rate-limit";
-import { Request } from "express";
+import { NextFunction, Request, Response } from "express";
 import { env } from "@/config/env";
+import { AppError } from "@/utils/errors";
+import { clientIp } from "@/utils/ip";
+import { hit } from "@/services/ratelimit.service";
 
-// Keyed on the resolved API key (set by requireApiKey, which must run first),
-// falling back to IP only if somehow no key is attached yet. v1 uses the
-// default in-memory store, which is fine for a single-instance deploy; a
-// Redis store is the scaling upgrade if the API ever runs with >1 instance.
-export const apiKeyRateLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  limit: (req: Request) => (req.apiKey?.mode === "LIVE" ? env.rateLimit.livePerMinute : env.rateLimit.testPerMinute),
-  keyGenerator: (req: Request) => req.apiKey?.id ?? req.ip ?? "unknown",
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (_req, res) => {
-    res.status(429).json({ error: { code: "RATE_LIMITED", message: "Too many requests." } });
-  },
-});
+// Per-IP limiter, applied before any authentication so unauthenticated floods
+// can't reach the database-heavy paths.
+export function ipRateLimit(limitPerMinute = env.ipRateLimitPerMinute, scope = "ip") {
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const result = await hit(`${scope}:${clientIp(req) ?? "unknown"}`, limitPerMinute);
+      if (!result.allowed) {
+        throw new AppError("RATE_LIMIT_EXCEEDED", "Too many requests", { retryAfter: result.retryAfter });
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}

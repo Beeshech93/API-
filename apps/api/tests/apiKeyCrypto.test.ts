@@ -1,18 +1,31 @@
-import { extractKeyPrefix, generateApiKey, verifyApiKey } from "@/utils/apiKeyCrypto";
+import { extractKeyPrefix, generateApiKey, maskApiKey, verifyApiKey } from "@/utils/apiKeyCrypto";
 
-describe("apiKeyCrypto", () => {
-  it("generates a key whose prefix and hash round-trip correctly", () => {
-    const { fullToken, keyPrefix, hashedSecret } = generateApiKey("TEST");
-    expect(fullToken).toMatch(/^pay_test_/);
-    expect(extractKeyPrefix(fullToken)).toBe(keyPrefix);
-    expect(verifyApiKey(fullToken, hashedSecret)).toBe(true);
-    expect(verifyApiKey("pay_test_wrongtoken", hashedSecret)).toBe(false);
+describe("API key crypto", () => {
+  it("generates hp_test_ / hp_live_ keys whose hash verifies", () => {
+    const test = generateApiKey("TEST");
+    const live = generateApiKey("LIVE");
+    expect(test.fullToken).toMatch(/^hp_test_/);
+    expect(live.fullToken).toMatch(/^hp_live_/);
+    expect(verifyApiKey(live.fullToken, live.hashedSecret)).toBe(true);
+    expect(verifyApiKey(live.fullToken + "x", live.hashedSecret)).toBe(false);
+    expect(extractKeyPrefix(live.fullToken)).toBe(live.keyPrefix);
   });
 
-  it("tags live keys distinctly from test keys", () => {
-    const testKey = generateApiKey("TEST");
-    const liveKey = generateApiKey("LIVE");
-    expect(testKey.fullToken.startsWith("pay_test_")).toBe(true);
-    expect(liveKey.fullToken.startsWith("pay_live_")).toBe(true);
+  it("never stores the full key: only hash, prefix and last 4", () => {
+    const key = generateApiKey("LIVE");
+    expect(key.hashedSecret).not.toContain(key.fullToken);
+    expect(key.last4).toBe(key.fullToken.slice(-4));
+  });
+
+  it("masks keys as hp_live_••••••••••••XXXX", () => {
+    const key = generateApiKey("LIVE");
+    const masked = maskApiKey(key.keyPrefix, key.last4);
+    expect(masked).toBe(`hp_live_${"•".repeat(12)}${key.last4}`);
+    expect(masked).not.toContain(key.fullToken.slice(8, 20));
+  });
+
+  it("rejects malformed keys", () => {
+    expect(extractKeyPrefix("pay_test_abcdefghijkl")).toBeNull();
+    expect(extractKeyPrefix("hp_live_short")).toBeNull();
   });
 });

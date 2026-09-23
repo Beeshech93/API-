@@ -1,24 +1,31 @@
 import crypto from "crypto";
-import { KeyMode } from "@ayitipay/shared";
+import { safeEqual } from "@/utils/hmac";
 
-const PREFIX_LENGTH = 12;
+export type KeyEnvironment = "TEST" | "LIVE";
+
+const PREFIX_RANDOM_LENGTH = 8;
 
 export interface GeneratedApiKey {
   fullToken: string;
   keyPrefix: string;
+  last4: string;
   hashedSecret: string;
 }
 
-// API keys are high-entropy random tokens, not low-entropy user passwords, so
-// a fast deterministic hash (sha256) + prefix index is the standard pattern
-// (mirrors Stripe/GitHub) rather than a slow password hash like bcrypt.
-export function generateApiKey(mode: KeyMode): GeneratedApiKey {
-  const modeTag = mode === "TEST" ? "test" : "live";
+// API keys are high-entropy random tokens, so a fast deterministic hash plus a
+// prefix index is the right storage pattern (unlike low-entropy passwords).
+// Format: hp_live_<random> / hp_test_<random>. Only the hash, an indexed prefix
+// and the last 4 characters are ever stored.
+export function generateApiKey(environment: KeyEnvironment): GeneratedApiKey {
+  const tag = environment === "LIVE" ? "live" : "test";
   const random = crypto.randomBytes(24).toString("base64url");
-  const fullToken = `pay_${modeTag}_${random}`;
-  const keyPrefix = fullToken.slice(0, `pay_${modeTag}_`.length + PREFIX_LENGTH);
-  const hashedSecret = hashApiKey(fullToken);
-  return { fullToken, keyPrefix, hashedSecret };
+  const fullToken = `hp_${tag}_${random}`;
+  return {
+    fullToken,
+    keyPrefix: fullToken.slice(0, `hp_${tag}_`.length + PREFIX_RANDOM_LENGTH),
+    last4: fullToken.slice(-4),
+    hashedSecret: hashApiKey(fullToken),
+  };
 }
 
 export function hashApiKey(fullToken: string): string {
@@ -26,20 +33,18 @@ export function hashApiKey(fullToken: string): string {
 }
 
 export function verifyApiKey(fullToken: string, hashedSecret: string): boolean {
-  const candidate = Buffer.from(hashApiKey(fullToken), "utf8");
-  const expected = Buffer.from(hashedSecret, "utf8");
-  if (candidate.length !== expected.length) return false;
-  return crypto.timingSafeEqual(candidate, expected);
+  return safeEqual(hashApiKey(fullToken), hashedSecret);
 }
 
-export function extractKeyPrefix(fullToken: string): string {
-  const match = fullToken.match(/^pay_(test|live)_/);
-  if (!match) throw new Error("Malformed API key");
-  return fullToken.slice(0, match[0].length + PREFIX_LENGTH);
+export function extractKeyPrefix(fullToken: string): string | null {
+  const match = fullToken.match(/^hp_(test|live)_/);
+  if (!match) return null;
+  const prefix = fullToken.slice(0, match[0].length + PREFIX_RANDOM_LENGTH);
+  return prefix.length === match[0].length + PREFIX_RANDOM_LENGTH ? prefix : null;
 }
 
-export function modeFromToken(fullToken: string): KeyMode | null {
-  if (fullToken.startsWith("pay_test_")) return "TEST";
-  if (fullToken.startsWith("pay_live_")) return "LIVE";
-  return null;
+// What the dashboard shows after creation, e.g. hp_live_••••••••••••91KD.
+export function maskApiKey(keyPrefix: string, last4: string): string {
+  const environment = keyPrefix.startsWith("hp_live_") ? "hp_live_" : "hp_test_";
+  return `${environment}${"•".repeat(12)}${last4}`;
 }

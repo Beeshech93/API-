@@ -1,15 +1,16 @@
 import jwt from "jsonwebtoken";
 import { env } from "@/config/env";
 
-export interface DeveloperTokenPayload {
-  developerId: string;
-  email: string;
+export interface AccessTokenPayload {
+  sub: string;
+  clientId: string;
+  role: "USER" | "ADMIN";
 }
 
-export function signDeveloperToken(payload: DeveloperTokenPayload): string {
-  return jwt.sign(payload, env.jwt.secret, { expiresIn: env.jwt.expiresIn } as jwt.SignOptions);
+export function signAccessToken(payload: AccessTokenPayload): string {
+  return jwt.sign(payload, env.jwt.secret, { expiresIn: env.jwt.accessTtlSeconds, algorithm: "HS256" });
 }
 
-export function verifyDeveloperToken(token: string): DeveloperTokenPayload {
-  return jwt.verify(token, env.jwt.secret) as DeveloperTokenPayload;
+export function verifyAccessToken(token: string): AccessTokenPayload {
+  return jwt.verify(token, env.jwt.secret, { algorithms: ["HS256"] }) as unknown as AccessTokenPayload;
 }
