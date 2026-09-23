@@ -6,7 +6,7 @@ import { SandboxProvider, SANDBOX_TEST_NUMBERS } from "@/providers/sandbox.provi
 import { LiveProvider } from "@/providers/live.provider";
 import { getProvider } from "@/providers/provider.factory";
 
-const input = (phone: string) => ({ network: "MONCASH" as const, amount: 500, currency: "HTG" as const, phone, requestId: "req_test" });
+const input = (phone: string) => ({ network: "MONCASH" as const, amount: 500, currency: "HTG" as const, phone, requestId: "req_test", transactionId: "txn_test" });
 
 describe("sandbox provider (never moves real money)", () => {
   const sandbox = new SandboxProvider();

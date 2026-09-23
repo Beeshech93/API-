@@ -6,7 +6,7 @@ import { API_URL } from "@/lib/apiClient";
 import { useT } from "@/lib/i18n";
 import { SANDBOX_NUMBERS, samples } from "./samples";
 
-const SECTIONS = ["intro", "auth", "keys", "moncash", "natcash", "payments", "transfers", "transactions", "balance", "quote", "webhooks", "errors", "limits", "sandbox"] as const;
+const SECTIONS = ["intro", "auth", "keys", "moncash", "natcash", "payments", "transfers", "transactions", "balance", "quote", "webhooks", "errors", "limits", "sandbox", "live"] as const;
 const LANGS = ["curl", "javascript", "node", "php", "python"] as const;
 const LANG_LABEL: Record<(typeof LANGS)[number], string> = { curl: "cURL", javascript: "JavaScript", node: "Node.js", php: "PHP", python: "Python" };
 

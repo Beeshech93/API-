@@ -135,13 +135,13 @@ const fr: Record<MessageKey, string> = {
   "doc.natcash.title": "NatCash",
   "doc.natcash.body": "Utilisez /api/v1/natcash — mêmes opérations et même format que MonCash.",
   "doc.payments.title": "Paiements",
-  "doc.payments.body": "Créez une demande de paiement pour le numéro de téléphone d'un client. L'en-tête Idempotency-Key est obligatoire : rejouer une requête avec la même clé renvoie la transaction d'origine et ne crée jamais un second paiement.",
+  "doc.payments.body": "Créez un paiement pour un client. Avec une clé TEST il reste en attente jusqu'à sa simulation. Avec une clé LIVE, la réponse contient payment_url : envoyez le client payer à cette adresse, puis attendez le webhook payment.completed (ou lisez la transaction) — ne livrez jamais une commande simplement parce que le client est revenu. success_url et error_url (optionnels) indiquent où le client revient. L'en-tête Idempotency-Key est obligatoire : répéter une requête avec la même clé renvoie la transaction d'origine sans créer de second paiement.",
   "doc.transfers.title": "Transferts",
-  "doc.transfers.body": "Envoyez de l'argent vers un numéro de téléphone sur MonCash ou NatCash. Les transferts ne puisent que dans votre propre solde encaissé sur ce réseau (paiements terminés moins frais et transferts précédents) : les fonds sont réservés dès la création du transfert, libérés s'il échoue, et une demande supérieure à votre solde disponible est refusée avec INSUFFICIENT_BALANCE. L'en-tête Idempotency-Key est obligatoire.",
+  "doc.transfers.body": "Envoyez de l'argent vers un numéro de téléphone sur MonCash ou NatCash. Les transferts ne puisent que dans votre propre solde encaissé (paiements terminés moins frais et transferts précédents), commun aux deux réseaux : les fonds sont réservés dès la création du transfert, libérés s'il échoue, et une demande supérieure à votre solde disponible est refusée avec INSUFFICIENT_BALANCE. Les transferts LIVE exigent recipient.first_name et recipient.last_name. L'en-tête Idempotency-Key est obligatoire.",
   "doc.transactions.title": "Transactions",
   "doc.transactions.body": "Consultez une transaction ou listez-les. Statuts : pending, processing, completed, failed, cancelled. Seul le backend modifie un statut, d'après le résultat du fournisseur.",
   "doc.balance.title": "Solde",
-  "doc.balance.body": "Renvoie ce que HaitiPay détient pour vous chez ce fournisseur, par devise : encaissé via les paiements terminés, frais, envoyé via des transferts et ce qui est disponible à envoyer. Le portefeuille fournisseur de la plateforme n'est jamais exposé.",
+  "doc.balance.body": "Renvoie ce que HaitiPay détient pour vous, par devise et commun à MonCash et NatCash : encaissé via les paiements terminés, frais, envoyé via des transferts et ce qui est disponible à envoyer. Le portefeuille fournisseur de la plateforme n'est jamais exposé.",
   "doc.webhooks.title": "Webhooks",
   "doc.webhooks.body": "Enregistrez une URL HTTPS dans le tableau de bord. Événements : payment.pending, payment.processing, payment.completed, payment.failed, transfer.pending, transfer.completed, transfer.failed. Chaque livraison porte X-HaitiPay-Signature: t=<unix>,v1=<hmac>, un HMAC-SHA256 de « <t>.<corps brut> » avec votre secret webhook. Les livraisons en échec sont rejouées automatiquement.",
   "doc.errors.title": "Erreurs",
@@ -176,7 +176,7 @@ const fr: Record<MessageKey, string> = {
   "admin.cfg.subtitle": "Saisissez ici les identifiants du fournisseur. Ils sont chiffrés, jamais réaffichés et jamais envoyés à un client — seuls les 4 derniers caractères sont visibles.",
   "admin.cfg.name": "Nom affiché (admins uniquement)",
   "admin.cfg.apiUrl": "URL de l'API",
-  "admin.cfg.apiKey": "Clé API",
+  "admin.cfg.apiKey": "Identifiant utilisateur (clé API)",
   "admin.cfg.secretKey": "Clé secrète",
   "admin.cfg.webhookSecret": "Secret du webhook",
   "admin.cfg.keepBlank": "laisser vide pour conserver la valeur actuelle",
@@ -194,6 +194,9 @@ const fr: Record<MessageKey, string> = {
   "tx.payment": "Paiement",
   "tx.transfer": "Transfert",
   "con.type": "Opération",
+
+  "doc.live.title": "Passer en production",
+  "doc.live.body": "Les clés LIVE déplacent de l'argent réel et sont traitées automatiquement par le fournisseur de paiement de la plateforme. Actuellement : la réception de paiements fonctionne sur MonCash (HTG, jusqu'à 75 000 HTG par paiement ; le client paie sur une page hébergée) ; l'envoi d'argent fonctionne sur MonCash et NatCash (HTG). La réception de paiements sur NatCash n'est pas encore disponible. Les résultats sont confirmés par la plateforme directement auprès du fournisseur : un statut ne devient terminé que si le fournisseur le confirme. Utilisez les clés TEST tant que votre intégration n'est pas prête.",
 };
 
 export default fr;

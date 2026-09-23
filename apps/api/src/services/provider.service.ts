@@ -8,15 +8,7 @@ export const PROVIDER_CODES = [
   { code: "natcash", name: "NatCash" },
 ] as const;
 
-export async function logProviderCall(entry: {
-  providerCode: string; operation: string; requestId?: string; success: boolean; responseMs: number; errorCode?: string; errorMessage?: string;
-}) {
-  try {
-    await prisma.providerLog.create({ data: entry });
-  } catch {
-    // never fail a payment because of a monitoring write
-  }
-}
+export { logProviderCall } from "@/services/providerLog.service";
 
 // Probes the payment provider, then derives MonCash/NatCash health from the error rate of the
 // real (LIVE) calls seen in the last 15 minutes.

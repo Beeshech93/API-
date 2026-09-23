@@ -133,13 +133,13 @@ const en = {
   "doc.natcash.title": "NatCash",
   "doc.natcash.body": "Use /api/v1/natcash — the same operations and format as MonCash.",
   "doc.payments.title": "Payments",
-  "doc.payments.body": "Create a payment request for a customer's phone number. The Idempotency-Key header is required: repeating a request with the same key returns the original transaction and never creates a second payment.",
+  "doc.payments.body": "Create a payment for a customer. With a TEST key it stays pending until you simulate it. With a LIVE key the response includes payment_url: send the customer there to pay, then wait for the payment.completed webhook (or read the transaction) — never fulfil an order just because the customer came back. Optional success_url and error_url set where the customer returns. The Idempotency-Key header is required: repeating a request with the same key returns the original transaction and never creates a second payment.",
   "doc.transfers.title": "Transfers",
-  "doc.transfers.body": "Send money out to a phone number on MonCash or NatCash. Transfers draw only on your own collected balance on that network (completed payments minus fees and earlier transfers): the funds are reserved the moment you create the transfer, released if it fails, and a request above your available balance is rejected with INSUFFICIENT_BALANCE. Idempotency-Key is required.",
+  "doc.transfers.body": "Send money out to a phone number on MonCash or NatCash. Transfers draw only on your own collected balance (completed payments minus fees and earlier transfers), shared by both networks: the funds are reserved the moment you create the transfer, released if it fails, and a request above your available balance is rejected with INSUFFICIENT_BALANCE. LIVE transfers require recipient.first_name and recipient.last_name. Idempotency-Key is required.",
   "doc.transactions.title": "Transactions",
   "doc.transactions.body": "Retrieve one transaction or list them. Statuses: pending, processing, completed, failed, cancelled. Only the backend changes a status, based on the provider's result.",
   "doc.balance.title": "Balance",
-  "doc.balance.body": "Returns what HaitiPay holds for you on that provider, per currency: collected from completed payments, fees, sent out through transfers and what is available to send. It never exposes the platform's own provider wallet.",
+  "doc.balance.body": "Returns what HaitiPay holds for you, per currency and shared by MonCash and NatCash: collected from completed payments, fees, sent out through transfers and what is available to send. It never exposes the platform's own provider wallet.",
   "doc.webhooks.title": "Webhooks",
   "doc.webhooks.body": "Register an HTTPS URL in the dashboard. Events: payment.pending, payment.processing, payment.completed, payment.failed, transfer.pending, transfer.completed, transfer.failed. Every delivery carries X-HaitiPay-Signature: t=<unix>,v1=<hmac>, an HMAC-SHA256 of \"<t>.<raw body>\" with your webhook secret. Failed deliveries are retried automatically.",
   "doc.errors.title": "Errors",
@@ -174,7 +174,7 @@ const en = {
   "admin.cfg.subtitle": "Enter the provider credentials here. They are encrypted, never shown again and never sent to any client — only the last 4 characters are displayed.",
   "admin.cfg.name": "Display name (admins only)",
   "admin.cfg.apiUrl": "API URL",
-  "admin.cfg.apiKey": "API key",
+  "admin.cfg.apiKey": "User ID (API key)",
   "admin.cfg.secretKey": "Secret key",
   "admin.cfg.webhookSecret": "Webhook secret",
   "admin.cfg.keepBlank": "leave blank to keep the current value",
@@ -192,6 +192,9 @@ const en = {
   "tx.payment": "Payment",
   "tx.transfer": "Transfer",
   "con.type": "Operation",
+
+  "doc.live.title": "Going live",
+  "doc.live.body": "LIVE keys move real money and are processed automatically through the platform's payment provider. Currently: receiving payments works on MonCash (HTG, up to 75,000 HTG per payment; the customer pays on a hosted page); sending money works on MonCash and NatCash (HTG). Receiving payments on NatCash is not available yet. Results are confirmed by the platform directly with the provider, so a status only becomes completed when the provider says so. Use TEST keys until your integration is ready.",
 } as const;
 
 export type MessageKey = keyof typeof en;

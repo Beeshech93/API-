@@ -21,9 +21,18 @@ CLIENT → API KEY → HAITIPAY API → validation → plan / limits / quota →
   admin-confirmed activation), API keys with permissions, idempotent payments **and transfers (send money)** on both MonCash and NatCash — payouts draw only on the client's collected balance, reserved atomically — quotes/fees, HMAC webhooks
   (SSRF-protected), rate limits per client / key / endpoint / IP, atomic monthly quota, API + audit logs,
   admin panel, and a deterministic **sandbox** that never moves money.
-- **Not implemented yet:** LIVE processing. The provider's API contract hasn't been confirmed, so the live
-  provider fails closed (`PROVIDER_ERROR`) instead of inventing endpoints — see `apps/api/src/providers/live.provider.ts`.
-  Also pending: email verification / password reset / 2FA, and an online payment processor
+- **LIVE processing** is wired to the payment provider from its public API docs
+  (`apps/api/src/providers/live.provider.ts`): every LIVE request is validated, priced and
+  recorded by the backend, then sent to the provider with the credentials an administrator saved in
+  the admin panel. Receiving payments works on MonCash (hosted payment page, HTG, ≤ 75,000);
+  sending money works on MonCash and NatCash. The provider does not offer NatCash pay-in, so
+  that stays unavailable. Outcomes are never taken on trust: a signed provider notification
+  (`POST /webhooks/provider`) only triggers a re-read of the transaction from the provider, LIVE
+  transactions are also re-checked when a client reads them and by the daily job, and a payment is
+  never completed for a different amount than requested.
+  **Not yet exercised against the real provider** — it has been tested against a local stand-in that
+  follows the documented contract, so run it with the provider's *sandbox* credentials first.
+- **Also pending:** email verification / password reset / 2FA, and an online payment processor
   (billing is provider-agnostic; today an admin confirms payment).
 
 ## Running locally

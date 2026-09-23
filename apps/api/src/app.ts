@@ -9,6 +9,7 @@ import { authRouter } from "@/routes/auth.routes";
 import { portalRouter } from "@/routes/portal.routes";
 import { adminRouter } from "@/routes/admin.routes";
 import { internalCronRouter } from "@/routes/internal.cron.routes";
+import { providerWebhookRouter } from "@/routes/providerWebhook.routes";
 import { AppError } from "@/utils/errors";
 
 // Builds the Express app without listening or starting workers, so `server.ts`
@@ -22,13 +23,22 @@ export function createApp() {
   app.use(helmet());
   // Only the HaitiPay dashboard origin may call this API from a browser.
   app.use(cors({ origin: env.portalAppUrl, credentials: true }));
-  app.use(express.json({ limit: "100kb" }));
+  // The raw body is kept so provider notifications can be signature-checked.
+  app.use(
+    express.json({
+      limit: "100kb",
+      verify: (req, _res, buf) => {
+        (req as unknown as { rawBody?: string }).rawBody = buf.toString("utf8");
+      },
+    })
+  );
 
   app.use("/api/v1", apiV1Router);
   app.use("/auth", authRouter);
   app.use("/portal", portalRouter);
   app.use("/admin", adminRouter);
   app.use("/internal/cron", internalCronRouter);
+  app.use("/webhooks/provider", providerWebhookRouter);
 
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
   app.use((_req, _res, next) => next(new AppError("NOT_FOUND", "Endpoint not found.")));

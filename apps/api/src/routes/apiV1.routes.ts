@@ -6,7 +6,7 @@ import { requireApiKey, requireAnyPermission, requirePermission } from "@/middle
 import { apiLogger } from "@/middleware/apiLogger";
 import { ipRateLimit } from "@/middleware/rateLimit";
 import {
-  createPaymentSchema, idempotencyKeySchema, listQuerySchema, quoteQuerySchema, simulateSchema,
+  createPaymentSchema, createTransferSchema, idempotencyKeySchema, listQuerySchema, quoteQuerySchema, simulateSchema,
 } from "@/validators/schemas";
 import { computeQuote, assertAmountInRange, getFeeConfig } from "@/services/fee.service";
 import { getEntitlements } from "@/services/entitlements.service";
@@ -97,7 +97,7 @@ network.post(
   requirePermission("transfers:create"),
   asyncHandler(async (req, res) => {
     const key = idempotencyKeySchema.parse(req.header("Idempotency-Key"));
-    const body = createPaymentSchema.parse(req.body);
+    const body = createTransferSchema.parse(req.body);
     const { transaction, replayed } = await payments.createTransfer(
       { clientId: req.apiAuth!.clientId, apiKeyId: req.apiAuth!.apiKeyId, environment: req.apiAuth!.environment, requestId: req.ctx.requestId },
       NETWORKS[req.params.network],
@@ -113,7 +113,7 @@ network.get(
   "/transfers/:id",
   requirePermission("transfers:read"),
   asyncHandler(async (req, res) => {
-    const t = await payments.getTransaction(req.apiAuth!.clientId, req.apiAuth!.environment, req.params.id, NETWORKS[req.params.network]);
+    const t = await payments.getTransaction(req.apiAuth!.clientId, req.apiAuth!.environment, req.params.id, NETWORKS[req.params.network], { refresh: true });
     if (t.type !== "TRANSFER") throw new AppError("TRANSACTION_NOT_FOUND", "Transaction not found.");
     res.json(payments.serializeTransaction(t));
   })
@@ -135,7 +135,7 @@ network.get(
   "/transactions/:id",
   requirePermission("transactions:read"),
   asyncHandler(async (req, res) => {
-    const t = await payments.getTransaction(req.apiAuth!.clientId, req.apiAuth!.environment, req.params.id, NETWORKS[req.params.network]);
+    const t = await payments.getTransaction(req.apiAuth!.clientId, req.apiAuth!.environment, req.params.id, NETWORKS[req.params.network], { refresh: true });
     res.json(payments.serializeTransaction(t));
   })
 );
@@ -144,7 +144,7 @@ network.get(
   "/balance",
   requirePermission("balance:read"),
   asyncHandler(async (req, res) => {
-    const balances = await payments.getCollectedBalance(req.apiAuth!.clientId, req.apiAuth!.environment, NETWORKS[req.params.network]);
+    const balances = await payments.getCollectedBalance(req.apiAuth!.clientId, req.apiAuth!.environment);
     res.json({ success: true, provider: req.params.network, environment: req.apiAuth!.environment.toLowerCase(), balances });
   })
 );

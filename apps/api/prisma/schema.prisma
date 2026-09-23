@@ -220,6 +220,7 @@ model Transaction {
   externalReference     String?           @map("external_reference")
   description           String?
   providerTransactionId String?           @map("provider_transaction_id")
+  paymentUrl            String?           @map("payment_url")
   status                TransactionStatus @default(PENDING)
   requestId             String            @map("request_id")
   errorCode             String?           @map("error_code")

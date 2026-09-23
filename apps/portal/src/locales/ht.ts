@@ -135,13 +135,13 @@ const ht: Record<MessageKey, string> = {
   "doc.natcash.title": "NatCash",
   "doc.natcash.body": "Itilize /api/v1/natcash — menm operasyon ak menm fòma ak MonCash.",
   "doc.payments.title": "Peman",
-  "doc.payments.body": "Kreye yon demann peman pou nimewo telefòn yon kliyan. Header Idempotency-Key obligatwa: si w repete yon demann ak menm kle a, ou resevwa tranzaksyon orijinal la epi yo pa janm kreye yon dezyèm peman.",
+  "doc.payments.body": "Kreye yon peman pou yon kliyan. Ak yon kle TÈS li rete an tann jiskaske ou simile l. Ak yon kle LIVE, repons lan gen payment_url: voye kliyan an peye nan adrès sa a, epi tann webhook payment.completed la (oswa li tranzaksyon an) — pa janm livre yon kòmand jis paske kliyan an retounen. success_url ak error_url (opsyonèl) endike kote kliyan an retounen. Header Idempotency-Key obligatwa: si w repete yon demann ak menm kle a, ou jwenn tranzaksyon orijinal la epi li pa janm kreye yon dezyèm peman.",
   "doc.transfers.title": "Transfè",
-  "doc.transfers.body": "Voye lajan bay yon nimewo telefòn sou MonCash oswa NatCash. Transfè yo sèvi sèlman ak pwòp balans ou kolekte sou rezo sa a (peman fini mwens frè ak transfè anvan yo): yo rezève lajan an depi w kreye transfè a, yo lage l si li echwe, epi yo rejte yon demann ki depase balans disponib ou ak INSUFFICIENT_BALANCE. Header Idempotency-Key obligatwa.",
+  "doc.transfers.body": "Voye lajan bay yon nimewo telefòn sou MonCash oswa NatCash. Transfè yo sèvi sèlman ak pwòp balans ou kolekte (peman fini mwens frè ak transfè anvan yo), ki pataje pa de rezo yo: yo rezève lajan an depi w kreye transfè a, yo lage l si li echwe, epi yo rejte yon demann ki depase balans disponib ou ak INSUFFICIENT_BALANCE. Transfè LIVE mande recipient.first_name ak recipient.last_name. Header Idempotency-Key obligatwa.",
   "doc.transactions.title": "Tranzaksyon",
   "doc.transactions.body": "Konsilte yon tranzaksyon oswa fè lis yo. Estati: pending, processing, completed, failed, cancelled. Se backend la sèlman ki chanje yon estati, selon rezilta founisè a.",
   "doc.balance.title": "Balans",
-  "doc.balance.body": "Li retounen sa HaitiPay kenbe pou ou nan founisè sa a, pa lajan: sa ou kolekte ak peman fini, frè, sa ou voye atravè transfè ak sa ki disponib pou voye. Li pa janm ekspoze pòtfèy platfòm nan pwòp tèt li nan founisè a.",
+  "doc.balance.body": "Li retounen sa HaitiPay kenbe pou ou, pa lajan ak pataje ant MonCash ak NatCash: sa ou kolekte ak peman fini, frè, sa ou voye atravè transfè ak sa ki disponib pou voye. Li pa janm ekspoze pòtfèy platfòm nan pwòp tèt li nan founisè a.",
   "doc.webhooks.title": "Webhooks",
   "doc.webhooks.body": "Anrejistre yon URL HTTPS nan tablo bò a. Evènman: payment.pending, payment.processing, payment.completed, payment.failed, transfer.pending, transfer.completed, transfer.failed. Chak livrezon pote X-HaitiPay-Signature: t=<unix>,v1=<hmac>, yon HMAC-SHA256 « <t>.<kò brit> » ak sekrè webhook ou. Livrezon ki echwe yo reyese otomatikman.",
   "doc.errors.title": "Erè",
@@ -176,7 +176,7 @@ const ht: Record<MessageKey, string> = {
   "admin.cfg.subtitle": "Antre idantifyan founisè a isit la. Yo chifre yo, yo pa janm montre yo ankò epi yo pa janm voye yo bay okenn kliyan — se sèlman 4 dènye karaktè yo w ap wè.",
   "admin.cfg.name": "Non ki afiche (admin sèlman)",
   "admin.cfg.apiUrl": "URL API",
-  "admin.cfg.apiKey": "Kle API",
+  "admin.cfg.apiKey": "ID itilizatè (kle API)",
   "admin.cfg.secretKey": "Kle sekrè",
   "admin.cfg.webhookSecret": "Sekrè webhook",
   "admin.cfg.keepBlank": "kite l vid pou kenbe valè aktyèl la",
@@ -194,6 +194,9 @@ const ht: Record<MessageKey, string> = {
   "tx.payment": "Peman",
   "tx.transfer": "Transfè",
   "con.type": "Operasyon",
+
+  "doc.live.title": "Pase an pwodiksyon",
+  "doc.live.body": "Kle LIVE yo deplase vrè lajan epi founisè peman platfòm nan trete yo otomatikman. Kounye a: resevwa peman mache sou MonCash (HTG, jiska 75 000 HTG pou chak peman; kliyan an peye sou yon paj òganize); voye lajan mache sou MonCash ak NatCash (HTG). Resevwa peman sou NatCash poko disponib. Se platfòm nan ki konfime rezilta yo dirèkteman ak founisè a: yon estati pa vin fini sof si founisè a konfime l. Sèvi ak kle TÈS jiskaske entegrasyon ou pare.",
 };
 
 export default ht;

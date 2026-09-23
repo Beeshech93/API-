@@ -10,6 +10,7 @@ import { getEntitlements } from "@/services/entitlements.service";
 import { enqueueEvent, WebhookEvent } from "@/services/webhook.service";
 import { recordTransaction } from "@/services/usage.service";
 import { logProviderCall } from "@/services/provider.service";
+import { audit } from "@/services/audit.service";
 import { pollOnce } from "@/workers/webhookDelivery.worker";
 
 export interface KeyContext {
@@ -25,6 +26,11 @@ export interface CreatePaymentBody {
   phone: string;
   reference?: string;
   description?: string;
+  // Payments: where the payer returns after the hosted payment page.
+  success_url?: string;
+  error_url?: string;
+  // Transfers: the person receiving the money.
+  recipient?: { first_name: string; last_name: string };
 }
 
 const PAYMENT_EVENTS: Record<TransactionStatus, WebhookEvent | null> = {
@@ -58,6 +64,7 @@ export function serializeTransaction(t: Transaction) {
     phone: t.phone,
     reference: t.externalReference,
     description: t.description,
+    ...(t.paymentUrl ? { payment_url: t.paymentUrl } : {}),
     environment: t.environment.toLowerCase(),
     request_id: t.requestId,
     error: t.errorCode ? { code: t.errorCode, message: t.errorMessage } : null,
@@ -69,11 +76,11 @@ export function serializeTransaction(t: Transaction) {
 const fingerprint = (network: Network, type: TransactionType, body: CreatePaymentBody) =>
   crypto
     .createHash("sha256")
-    .update(JSON.stringify([type, network, body.amount, body.currency, body.phone, body.reference ?? null, body.description ?? null]))
+    .update(JSON.stringify([type, network, body.amount, body.currency, body.phone, body.reference ?? null, body.description ?? null, body.success_url ?? null, body.error_url ?? null, body.recipient?.first_name ?? null, body.recipient?.last_name ?? null]))
     .digest("hex");
 
-async function recordStatus(t: Transaction, status: TransactionStatus, source: string, raw: Record<string, unknown>, extra: Partial<Prisma.TransactionUpdateInput> = {}) {
-  const updated = await prisma.transaction.update({ where: { id: t.id }, data: { status, ...extra } });
+// Events, webhook and audit trail for a status that has just been written.
+async function emitStatus(t: Transaction, status: TransactionStatus, source: string, raw: Record<string, unknown>) {
   await prisma.transactionEvent.create({ data: { transactionId: t.id, status, source, rawPayload: raw as Prisma.InputJsonValue } });
   const event = eventFor(t.type, status);
   if (event) {
@@ -89,22 +96,41 @@ async function recordStatus(t: Transaction, status: TransactionStatus, source: s
       created_at: new Date().toISOString(),
     });
   }
+}
+
+async function recordStatus(t: Transaction, status: TransactionStatus, source: string, raw: Record<string, unknown>, extra: Partial<Prisma.TransactionUpdateInput> = {}) {
+  const updated = await prisma.transaction.update({ where: { id: t.id }, data: { status, ...extra } });
+  await emitStatus(t, status, source, raw);
   return updated;
+}
+
+// Moves a transaction out of PENDING/PROCESSING exactly once. Two racers (a
+// provider notification and a poll, say) can't both apply the same outcome or
+// enqueue duplicate webhooks, and a terminal state is never overwritten.
+async function settle(t: Transaction, status: TransactionStatus, source: string, raw: Record<string, unknown>, extra: { errorCode?: string; errorMessage?: string } = {}) {
+  const { count } = await prisma.transaction.updateMany({
+    where: { id: t.id, status: { in: ["PENDING", "PROCESSING"] } },
+    data: { status, ...extra },
+  });
+  if (count === 1) await emitStatus(t, status, source, raw);
+  return (await prisma.transaction.findUnique({ where: { id: t.id } })) ?? t;
 }
 
 const fromProviderStatus = (s: ProviderTxStatus): TransactionStatus => s;
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
-// Money a client can send out on a network: what they've collected from
-// completed payments (net of fees) minus everything already sent or reserved by
+// Money a client can send out: what they've collected from completed payments
+// (net of fees) minus everything already sent or reserved by
 // pending/processing/completed transfers (amount + fee). A failed transfer
-// releases its reservation. Payouts can only ever draw on the client's OWN
-// collected funds — never on the platform's provider wallet.
-async function availableBalance(db: Db, clientId: string, environment: ApiEnvironment, network: Network, currency: "HTG" | "USD") {
+// releases its reservation. The pool is per currency and environment and is
+// shared by both networks — the platform holds one provider wallet, and some
+// networks can only be paid out to, not collected on. Payouts can only ever draw
+// on the client's OWN collected funds, never on the platform's provider wallet.
+async function availableBalance(db: Db, clientId: string, environment: ApiEnvironment, currency: "HTG" | "USD") {
   const groups = await db.transaction.groupBy({
     by: ["type", "status"],
-    where: { clientId, environment, provider: network, currency, status: { in: ["PENDING", "PROCESSING", "COMPLETED"] } },
+    where: { clientId, environment, currency, status: { in: ["PENDING", "PROCESSING", "COMPLETED"] } },
     _sum: { amount: true, feeAmount: true },
   });
   let available = new Prisma.Decimal(0);
@@ -128,11 +154,27 @@ async function createOperation(
   assertAmountInRange(body.amount, body.currency, config);
 
   const print = fingerprint(network, type, body);
+  const providerInput = {
+    network: network as NetworkCode,
+    amount: body.amount,
+    currency: body.currency,
+    phone: body.phone,
+    reference: body.reference,
+    description: body.description,
+    requestId: ctx.requestId,
+    successUrl: body.success_url,
+    errorUrl: body.error_url,
+    recipient: body.recipient ? { firstName: body.recipient.first_name, lastName: body.recipient.last_name } : undefined,
+  };
   const findExisting = () =>
     prisma.transaction.findFirst({ where: { clientId: ctx.clientId, environment: ctx.environment, idempotencyKey } });
 
   const existing = await findExisting();
   if (existing) return replay(existing, print);
+
+  // Refuse what the provider couldn't carry out (unsupported network, missing
+  // recipient...) before anything is created or any funds are reserved.
+  await getProvider(ctx.environment).validate?.(type, providerInput);
 
   const entitlements = await getEntitlements(ctx.clientId);
   const quote = computeQuote(body.amount, body.currency, config, entitlements.transactionFeeBps);
@@ -161,11 +203,11 @@ async function createOperation(
   try {
     if (type === "TRANSFER") {
       // Check the balance and reserve the funds atomically: an advisory lock per
-      // client+network+currency serializes concurrent transfers, so two racing
+      // client+environment+currency serializes concurrent transfers, so two racing
       // requests can never both spend the same money.
       created = await prisma.$transaction(async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${ctx.clientId}:${ctx.environment}:${network}:${body.currency}`}))`;
-        const available = await availableBalance(tx, ctx.clientId, ctx.environment, network, body.currency);
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${ctx.clientId}:${ctx.environment}:${body.currency}`}))`;
+        const available = await availableBalance(tx, ctx.clientId, ctx.environment, body.currency);
         if (available.lt(quote.total)) {
           throw new AppError("INSUFFICIENT_BALANCE", `Insufficient balance: ${available.toFixed(2)} ${body.currency} available, ${quote.total} ${body.currency} required (amount + fee).`);
         }
@@ -197,15 +239,7 @@ async function createOperation(
   const started = Date.now();
   try {
     const provider = getProvider(ctx.environment);
-    const input = {
-      network: network as NetworkCode,
-      amount: body.amount,
-      currency: body.currency,
-      phone: body.phone,
-      reference: body.reference,
-      description: body.description,
-      requestId: ctx.requestId,
-    };
+    const input = { ...providerInput, transactionId: created.id };
     const result = type === "TRANSFER" ? await provider.createTransfer(input) : await provider.createPayment(input);
     if (ctx.environment === "LIVE") {
       await logProviderCall({ providerCode, operation: type === "TRANSFER" ? "createTransfer" : "createPayment", requestId: ctx.requestId, success: true, responseMs: Date.now() - started });
@@ -213,9 +247,10 @@ async function createOperation(
     const status = fromProviderStatus(result.status);
     const updated =
       status === "PENDING"
-        ? await prisma.transaction.update({ where: { id: created.id }, data: { providerTransactionId: result.providerTransactionId } })
+        ? await prisma.transaction.update({ where: { id: created.id }, data: { providerTransactionId: result.providerTransactionId, paymentUrl: result.redirectUrl } })
         : await recordStatus(created, status, "provider", { provider_transaction_id: result.providerTransactionId }, {
             providerTransactionId: result.providerTransactionId,
+            paymentUrl: result.redirectUrl,
             errorCode: result.errorCode,
             errorMessage: result.errorMessage,
           });
@@ -252,9 +287,15 @@ function replay(existing: Transaction, print: string) {
   return { transaction: existing, replayed: true };
 }
 
-export async function getTransaction(clientId: string, environment: ApiEnvironment, id: string, network?: Network) {
+export async function getTransaction(clientId: string, environment: ApiEnvironment, id: string, network?: Network, options: { refresh?: boolean } = {}) {
   const t = await prisma.transaction.findFirst({ where: { id, clientId, environment, ...(network ? { provider: network } : {}) } });
   if (!t) throw new AppError("TRANSACTION_NOT_FOUND", "Transaction not found.");
+  // A LIVE transaction still in flight is re-checked with the provider when a
+  // client asks about it (rate-limited by the freshness window), so results
+  // don't depend on a notification or the daily job.
+  if (options.refresh && needsSync(t) && Date.now() - t.updatedAt.getTime() > 5_000) {
+    return (await syncFromProvider(t, "poll")).transaction;
+  }
   return t;
 }
 
@@ -278,14 +319,14 @@ export async function listTransactions(
   return rows;
 }
 
-// "Balance" for a client is what HaitiPay holds for them on a network: what
-// they've collected from completed payments, less fees, less what they've sent
-// out (or reserved for pending transfers). It never exposes the platform's own
+// "Balance" for a client is what HaitiPay holds for them: what they've collected
+// from completed payments (on any network), less fees, less what they've sent out
+// (or reserved for pending transfers). It never exposes the platform's own
 // provider wallet, which belongs to the operator.
-export async function getCollectedBalance(clientId: string, environment: ApiEnvironment, network: Network) {
+export async function getCollectedBalance(clientId: string, environment: ApiEnvironment) {
   const groups = await prisma.transaction.groupBy({
     by: ["currency", "type", "status"],
-    where: { clientId, environment, provider: network, status: { in: ["PENDING", "PROCESSING", "COMPLETED"] } },
+    where: { clientId, environment, status: { in: ["PENDING", "PROCESSING", "COMPLETED"] } },
     _sum: { amount: true, feeAmount: true },
   });
   const byCurrency = new Map<string, { collected: Prisma.Decimal; fees: Prisma.Decimal; sent: Prisma.Decimal; sentFees: Prisma.Decimal }>();
@@ -320,5 +361,72 @@ export async function simulateTransaction(ctx: KeyContext, id: string, outcome: 
   const status: TransactionStatus = outcome === "completed" ? "COMPLETED" : "FAILED";
   const updated = await recordStatus(t, status, "sandbox_simulation", { outcome }, outcome === "failed" ? { errorCode: "TRANSACTION_FAILED", errorMessage: "Payment declined (simulated)" } : {});
   await pollOnce().catch(() => undefined);
+  return updated;
+}
+
+// ---- Reconciliation with the provider -----------------------------------------
+
+const needsSync = (t: Transaction) => t.environment === "LIVE" && Boolean(t.providerTransactionId) && (t.status === "PENDING" || t.status === "PROCESSING");
+
+// Asks the provider what really happened and applies it. The provider's answer
+// (fetched by us, not taken from a request body) is the only thing that can
+// complete or fail a LIVE transaction. `reached` tells callers whether the
+// provider could be consulted, so a notification can be retried if not.
+export async function syncFromProvider(t: Transaction, source: string): Promise<{ transaction: Transaction; reached: boolean }> {
+  if (!needsSync(t)) return { transaction: t, reached: true };
+  const started = Date.now();
+  let result;
+  try {
+    result = await getProvider("LIVE").getPayment(t.provider as NetworkCode, t.providerTransactionId as string);
+  } catch {
+    return { transaction: t, reached: false };
+  }
+  await logProviderCall({ providerCode: t.provider.toLowerCase(), operation: "getPayment", requestId: t.requestId, success: true, responseMs: Date.now() - started });
+
+  // Never complete for an amount other than the one requested.
+  if (result.amount !== undefined && Number(result.amount) !== Number(t.amount)) {
+    await audit({ action: "provider.amount_mismatch", targetType: "transaction", targetId: t.id, clientId: t.clientId, metadata: { transaction_id: t.id, expected: Number(t.amount), reported: result.amount } });
+    return { transaction: t, reached: true };
+  }
+  if (result.status === t.status || result.status === "PENDING" || (result.status === "PROCESSING" && t.status === "PROCESSING")) {
+    return { transaction: t, reached: true };
+  }
+  if (result.status === "PROCESSING") return { transaction: t, reached: true };
+
+  const failed = result.status === "FAILED" || result.status === "CANCELLED";
+  const transaction = await settle(t, result.status, source, { provider_status: result.status.toLowerCase() }, failed ? {
+    errorCode: "TRANSACTION_FAILED",
+    errorMessage: result.status === "CANCELLED" ? "The payment was cancelled." : t.type === "TRANSFER" ? "The transfer failed." : "The payment was not completed.",
+  } : {});
+  return { transaction, reached: true };
+}
+
+// Settles LIVE transactions still in flight. Used by the daily job and safe to
+// run any time; each transaction is checked against the provider.
+export async function reconcileLive(limit = 25, olderThanMs = 60_000) {
+  const rows = await prisma.transaction.findMany({
+    where: { environment: "LIVE", status: { in: ["PENDING", "PROCESSING"] }, providerTransactionId: { not: null }, updatedAt: { lt: new Date(Date.now() - olderThanMs) } },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+  let settled = 0;
+  for (const t of rows) {
+    const { transaction } = await syncFromProvider(t, "reconcile");
+    if (transaction.status !== t.status) settled++;
+  }
+  return { checked: rows.length, settled };
+}
+
+// Administrator override for a LIVE transaction the provider could not settle
+// (typically a transfer whose confirmation was lost). Audited; only from an
+// in-flight state, and it can never overwrite a terminal state.
+export async function resolveManually(id: string, outcome: "completed" | "failed", actor: { userId: string; ip?: string }, note: string) {
+  const t = await prisma.transaction.findUnique({ where: { id } });
+  if (!t) throw new AppError("TRANSACTION_NOT_FOUND", "Transaction not found.");
+  if (t.environment !== "LIVE") throw new AppError("INVALID_REQUEST", "Only LIVE transactions can be resolved manually.");
+  if (t.status !== "PENDING" && t.status !== "PROCESSING") throw new AppError("CONFLICT", `Transaction is already ${t.status.toLowerCase()}.`);
+  const status: TransactionStatus = outcome === "completed" ? "COMPLETED" : "FAILED";
+  const updated = await settle(t, status, "admin", { note }, outcome === "failed" ? { errorCode: "TRANSACTION_FAILED", errorMessage: "The transaction did not complete." } : {});
+  await audit({ action: "admin.transaction_resolved", actorUserId: actor.userId, ip: actor.ip, metadata: { transaction_id: id, outcome, note } });
   return updated;
 }

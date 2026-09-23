@@ -25,6 +25,9 @@ export const env = {
   },
   portalAppUrl: process.env.PORTAL_APP_URL ?? "http://localhost:3000",
   cronSecret: process.env.CRON_SECRET ?? "",
+  // Public base URL of this API. LIVE transactions tell the provider to notify
+  // `${apiPublicUrl}/webhooks/provider`; without it, results are polled instead.
+  apiPublicUrl: (process.env.API_PUBLIC_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "")).replace(/\/+$/, ""),
   // 32-byte key (base64 or hex) that encrypts secrets stored in the database.
   secretsKey: process.env.CREDENTIALS_ENCRYPTION_KEY ?? "",
   trialDays: Number(process.env.TRIAL_DAYS ?? 14),

@@ -15,6 +15,7 @@ import { getFeeConfig, saveFeeConfig } from "@/services/fee.service";
 import { checkProviders, listProviders } from "@/services/provider.service";
 import { clearConfig, getConfigSummary, saveConfig } from "@/services/providerConfig.service";
 import { getUsage } from "@/services/usage.service";
+import * as paymentService from "@/services/payment.service";
 import { signupSchema } from "@/validators/schemas";
 
 export const adminRouter = Router();
@@ -214,7 +215,20 @@ adminRouter.post("/providers/check", asyncHandler(async (_req, res) => res.json(
 
 adminRouter.get("/transactions", asyncHandler(async (_req, res) => {
   const rows = await prisma.transaction.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
-  res.json({ success: true, transactions: rows.map((t) => ({ id: t.id, client_id: t.clientId, provider: t.provider.toLowerCase(), status: t.status.toLowerCase(), environment: t.environment.toLowerCase(), amount: Number(t.amount), currency: t.currency, request_id: t.requestId, created_at: t.createdAt })) });
+  res.json({ success: true, transactions: rows.map((t) => ({ id: t.id, client_id: t.clientId, type: t.type.toLowerCase(), provider_transaction_id: t.providerTransactionId, error_code: t.errorCode, provider: t.provider.toLowerCase(), status: t.status.toLowerCase(), environment: t.environment.toLowerCase(), amount: Number(t.amount), currency: t.currency, request_id: t.requestId, created_at: t.createdAt })) });
+}));
+
+// Settles LIVE transactions still in flight by asking the provider (also runs daily).
+adminRouter.post("/transactions/reconcile", ipRateLimit(10, "admin-reconcile"), asyncHandler(async (_req, res) => {
+  res.json({ success: true, ...(await paymentService.reconcileLive(50, 0)) });
+}));
+
+// Last resort for a LIVE transaction the provider could not settle, e.g. a transfer
+// whose confirmation was lost (it stays PROCESSING with the funds reserved).
+adminRouter.post("/transactions/:id/resolve", ipRateLimit(30, "admin-resolve"), asyncHandler(async (req, res) => {
+  const body = z.object({ outcome: z.enum(["completed", "failed"]), note: z.string().trim().min(3).max(300) }).parse(req.body);
+  const t = await paymentService.resolveManually(req.params.id, body.outcome, actor(req), body.note);
+  res.json({ success: true, transaction: paymentService.serializeTransaction(t) });
 }));
 
 adminRouter.get("/api-logs", asyncHandler(async (_req, res) => {

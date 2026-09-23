@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { env } from "@/config/env";
 import { PERMISSIONS } from "@/services/apikey.service";
 import { WEBHOOK_EVENTS } from "@/services/webhook.service";
 
@@ -25,12 +26,37 @@ const phone = z
   .transform((v) => v.replace(/[\s()+-]/g, ""))
   .refine((v) => /^509\d{8}$/.test(v), "Phone must be a Haitian number in the format 509XXXXXXXX.");
 
-export const createPaymentSchema = z.object({
+const returnUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .url()
+  .refine((u) => (env.isProduction ? u.startsWith("https://") : /^https?:\/\//.test(u)), "URL must use HTTPS.");
+
+const moneyFields = {
   amount: z.number({ invalid_type_error: "Amount must be a number." }).positive("Amount must be positive."),
   currency: z.enum(["HTG", "USD"]),
   phone,
   reference: z.string().trim().max(100).optional(),
   description: z.string().trim().max(200).optional(),
+};
+
+export const createPaymentSchema = z.object({
+  ...moneyFields,
+  // Where the payer is sent back to after the hosted payment page (LIVE).
+  success_url: returnUrl.optional(),
+  error_url: returnUrl.optional(),
+});
+
+export const createTransferSchema = z.object({
+  ...moneyFields,
+  // Who receives the money. Required for LIVE transfers.
+  recipient: z
+    .object({
+      first_name: z.string().trim().min(1).max(60),
+      last_name: z.string().trim().min(1).max(60),
+    })
+    .optional(),
 });
 
 export const idempotencyKeySchema = z
