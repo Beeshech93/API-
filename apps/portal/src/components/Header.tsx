@@ -1,40 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { LOCALES, Locale, useLocale } from "@/lib/i18n";
-
-const LABELS: Record<Locale, string> = { en: "EN", es: "ES", fr: "FR" };
+import { usePathname } from "next/navigation";
+import { LOCALES, useLocale } from "@/lib/i18n";
+import { useAuth } from "@/lib/AuthProvider";
 
 export function Header() {
   const { locale, setLocale, t } = useLocale();
+  const { user } = useAuth();
+  const pathname = usePathname();
+
+  // The dashboard and admin panel have their own sidebar shell.
+  if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin")) return null;
 
   return (
-    <header className="bg-navy text-white">
-      <nav className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="font-bold text-lg">
-          Ayiti<span className="text-lime">Pay</span>
+    <header className="bg-ink text-white sticky top-0 z-30 border-b border-white/10">
+      <nav className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        <Link href="/" className="font-bold text-lg shrink-0">
+          Haiti<span className="text-electric">Pay</span>
         </Link>
-        <div className="flex gap-4 sm:gap-6 text-sm items-center">
-          <Link href="/docs">{t("nav.docs")}</Link>
-          <Link href="/dashboard">{t("nav.dashboard")}</Link>
-          <div role="group" aria-label="Language" className="flex rounded-full border border-white/30 overflow-hidden">
+        <div className="flex gap-3 sm:gap-6 text-sm items-center">
+          <Link href="/#plans" className="hidden md:inline text-slate-300 hover:text-white">{t("nav.plans")}</Link>
+          <Link href="/docs" className="hidden sm:inline text-slate-300 hover:text-white">{t("nav.docs")}</Link>
+          <div role="group" aria-label="Language" className="flex rounded-full border border-white/25 overflow-hidden">
             {LOCALES.map((code) => (
-              <button
-                key={code}
-                type="button"
-                onClick={() => setLocale(code)}
-                aria-pressed={locale === code}
-                className={`px-2.5 py-1 text-xs font-semibold ${
-                  locale === code ? "bg-lime text-navy" : "text-white/80 hover:text-white"
-                }`}
-              >
-                {LABELS[code]}
+              <button key={code} type="button" onClick={() => setLocale(code)} aria-pressed={locale === code} className={`px-2 py-1 text-[11px] font-semibold ${locale === code ? "bg-electric text-white" : "text-white/70 hover:text-white"}`}>
+                {code.toUpperCase()}
               </button>
             ))}
           </div>
-          <Link href="/login" className="bg-lime text-navy px-4 py-1.5 rounded-full font-semibold">
-            {t("nav.signIn")}
-          </Link>
+          {user ? (
+            <Link href={user.role === "ADMIN" ? "/admin" : "/dashboard"} className="bg-electric hover:bg-electric-600 text-white px-4 py-1.5 rounded-full font-semibold">{t("nav.dashboard")}</Link>
+          ) : (
+            <Link href="/login" className="bg-electric hover:bg-electric-600 text-white px-4 py-1.5 rounded-full font-semibold">{t("nav.signIn")}</Link>
+          )}
         </div>
       </nav>
     </header>

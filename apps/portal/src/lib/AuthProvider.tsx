@@ -2,87 +2,78 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { callPortalApi, clearStoredToken, getStoredToken, setStoredToken } from "@/lib/apiClient";
+import { api, authRequest, refreshSession, setAccessToken } from "@/lib/apiClient";
 
-interface Developer {
+export interface SessionUser {
   id: string;
   email: string;
   name: string;
+  role: "USER" | "ADMIN";
+  clientId: string;
 }
 
 interface AuthContextValue {
-  developer: Developer | null;
-  token: string | null;
+  user: SessionUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [developer, setDeveloper] = useState<Developer | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // On load, silently resume the session from the httpOnly refresh cookie.
   useEffect(() => {
-    const stored = getStoredToken();
-    const storedDeveloper = window.localStorage.getItem("ayitipay_developer");
-    if (stored && storedDeveloper) {
-      setToken(stored);
-      setDeveloper(JSON.parse(storedDeveloper));
-    }
-    setLoading(false);
+    (async () => {
+      if (await refreshSession()) {
+        try {
+          setUser((await api<{ user: SessionUser }>("/auth/me")).user);
+        } catch {
+          setAccessToken(null);
+        }
+      }
+      setLoading(false);
+    })();
   }, []);
 
-  const applySession = useCallback((result: { token: string; developer: Developer }) => {
-    setStoredToken(result.token);
-    window.localStorage.setItem("ayitipay_developer", JSON.stringify(result.developer));
-    setToken(result.token);
-    setDeveloper(result.developer);
+  const start = useCallback((data: { access_token: string; user: SessionUser }) => {
+    setAccessToken(data.access_token);
+    setUser(data.user);
   }, []);
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const result = await callPortalApi<{ token: string; developer: Developer }>("/auth/login", {
-        method: "POST",
-        body: { email, password },
-        token: null,
-      });
-      applySession(result);
-      router.push("/dashboard");
+      const data = await authRequest("/auth/login", { email, password });
+      start(data);
+      router.push(data.user.role === "ADMIN" ? "/admin" : "/dashboard");
     },
-    [applySession, router]
+    [router, start]
   );
 
   const signup = useCallback(
     async (email: string, password: string, name: string) => {
-      const result = await callPortalApi<{ token: string; developer: Developer }>("/auth/signup", {
-        method: "POST",
-        body: { email, password, name },
-        token: null,
-      });
-      applySession(result);
+      const data = await authRequest("/auth/signup", { email, password, name });
+      start(data);
       router.push("/dashboard");
     },
-    [applySession, router]
+    [router, start]
   );
 
-  const logout = useCallback(() => {
-    clearStoredToken();
-    window.localStorage.removeItem("ayitipay_developer");
-    setToken(null);
-    setDeveloper(null);
+  const logout = useCallback(async () => {
+    try {
+      await authRequest("/auth/logout");
+    } catch {}
+    setAccessToken(null);
+    setUser(null);
     router.push("/login");
   }, [router]);
 
-  return (
-    <AuthContext.Provider value={{ developer, token, loading, login, signup, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, loading, login, signup, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

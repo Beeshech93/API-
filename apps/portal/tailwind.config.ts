@@ -5,8 +5,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        navy: "#0b1e3d",
-        lime: "#a6e22e",
+        ink: "#050a14",
+        navy: { DEFAULT: "#0a1628", 800: "#0f2140", 700: "#152b52" },
+        electric: { DEFAULT: "#2f6bff", 600: "#1f57e6", 100: "#e6eeff" },
       },
     },
   },

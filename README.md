@@ -1,71 +1,45 @@
-# AyitiPay
+# HaitiPay API
 
-A unified developer API for Haiti's mobile money providers — **MonCash** (Digicel) and
-**NatCash** (Natcom) — plus a self-serve developer portal, interactive docs, webhooks,
-and a per-transaction billing ledger.
+One API for **MonCash** and **NatCash**. Clients get an API key (`hp_live_…` / `hp_test_…`);
+every request goes through our backend, which validates the key, permissions, plan,
+limits and quota before anything reaches the payment provider (Bazik). Provider
+credentials belong to the platform operator only and never reach a client or a browser.
 
-Each developer application connects **its own** MonCash/NatCash merchant credentials
-(marketplace model, not a shared platform merchant account). Credentials are encrypted
-at rest with AES-256-GCM.
+```
+CLIENT → API KEY → HAITIPAY API → validation → plan / limits / quota → PaymentService → BazikService → MonCash / NatCash
+```
+
+## What's here
+
+- `apps/api` — Express + Prisma (Postgres): public `/api/v1`, dashboard `/portal/*`, admin `/admin/*`, auth `/auth/*`.
+- `apps/portal` — Next.js: landing, client dashboard, admin panel and docs (FR default, EN, HT, ES).
+- `packages/shared` — shared types.
 
 ## Status
 
-v1 scaffold. Real MonCash/NatCash "live" API contracts are **not yet implemented** —
-no official documentation was available to confirm the real endpoints, auth flow, or
-webhook payload/signature scheme. TEST-mode keys work fully today against a built-in
-mock/sandbox. See the TODO comments in `apps/api/src/providers/*/*.adapter.ts` before
-attempting to go live.
+- **Works end to end:** signup/login (rotating httpOnly refresh tokens), plans & subscriptions (trial →
+  admin-confirmed activation), API keys with permissions, idempotent payments, quotes/fees, HMAC webhooks
+  (SSRF-protected), rate limits per client / key / endpoint / IP, atomic monthly quota, API + audit logs,
+  admin panel, and a deterministic **sandbox** that never moves money.
+- **Not implemented yet:** LIVE processing. The Bazik API contract hasn't been confirmed, so the live
+  provider fails closed (`PROVIDER_ERROR`) instead of inventing endpoints — see `apps/api/src/providers/bazik.service.ts`.
+  Also pending: transfers, email verification / password reset / 2FA, and an online payment processor
+  (billing is provider-agnostic; today an admin confirms payment).
 
-## Getting started
-
-```bash
-cp .env.example apps/api/.env
-cp .env.example apps/portal/.env.local   # only NEXT_PUBLIC_* vars are read here
-```
-
-Generate a `CREDENTIALS_ENCRYPTION_KEY` and put it in `apps/api/.env`:
+## Running locally
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-```
-
-Start Postgres:
-
-```bash
-docker compose up -d
-```
-
-Install dependencies and run the first migration:
-
-```bash
+cp .env.example apps/api/.env      # then fill it in
 npm install
-npm run prisma:migrate --workspace apps/api -- --name init
-```
-
-Run both apps:
-
-```bash
-npm run dev:api      # http://localhost:4000
-npm run dev:portal   # http://localhost:3000
-```
-
-Run the API test suite:
-
-```bash
+npm run prisma:migrate --workspace @ayitipay/api
+npx tsx apps/api/prisma/seed.ts    # plans, providers, fee settings
+npm run dev:api                    # :4000
+npm run dev:portal                 # :3000
 npm test
 ```
 
-## Project layout
+Promote the first administrator (never possible through the public API):
 
+```bash
+npm run admin:promote --workspace @ayitipay/api -- you@example.com
 ```
-apps/api/      Express API — public /v1/* payments API, /portal/* dashboard API,
-                /auth/* developer auth, /webhooks/* inbound provider callbacks,
-                and the webhook delivery worker.
-apps/portal/   Next.js developer portal — marketing site, dashboard, and docs (MDX)
-                with an interactive "try it" console.
-packages/shared/  Enums and DTOs shared by both apps.
-```
-
-See `.claude/plans/` in this session's history (or ask for a copy) for the full
-design write-up, including the domain model, provider-adapter interface, and the
-list of open items to confirm before enabling live payments.

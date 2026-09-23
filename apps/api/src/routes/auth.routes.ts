@@ -24,17 +24,14 @@ function readCookie(req: Request, name: string): string | undefined {
 }
 
 // The refresh token lives only in an httpOnly cookie, so page scripts (and any
-// XSS) can never read it. It is cross-site in production (portal and API are on
-// different domains), hence SameSite=None; CSRF is covered by the Origin check
-// on /refresh and /logout below.
+// XSS) can never read it. The portal reaches this API through a same-origin
+// proxy, which makes it a first-party cookie (SameSite=Lax is enough — browsers
+// block cross-site cookies between *.vercel.app domains). CSRF is covered by the
+// Origin check on /refresh and /logout below.
+const COOKIE_OPTIONS = { httpOnly: true, secure: env.isProduction, sameSite: "lax" as const, path: "/" };
+
 function setRefreshCookie(res: Response, token: string, expires: Date) {
-  res.cookie(COOKIE, token, {
-    httpOnly: true,
-    secure: env.isProduction,
-    sameSite: env.isProduction ? "none" : "lax",
-    path: "/auth",
-    expires,
-  });
+  res.cookie(COOKIE, token, { ...COOKIE_OPTIONS, expires });
 }
 
 function assertTrustedOrigin(req: Request) {
@@ -74,7 +71,7 @@ authRouter.post("/refresh", asyncHandler(async (req, res) => {
 authRouter.post("/logout", asyncHandler(async (req, res) => {
   assertTrustedOrigin(req);
   await auth.logout(readCookie(req, COOKIE));
-  res.clearCookie(COOKIE, { path: "/auth", secure: env.isProduction, sameSite: env.isProduction ? "none" : "lax" });
+  res.clearCookie(COOKIE, COOKIE_OPTIONS);
   res.json({ success: true });
 }));
 
