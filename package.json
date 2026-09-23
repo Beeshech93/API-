@@ -13,6 +13,7 @@
     "build": "npm run build --workspace packages/shared && npm run build --workspace apps/api && npm run build --workspace apps/portal",
     "test": "npm test --workspace apps/api",
     "prisma:migrate": "npm run prisma:migrate --workspace apps/api",
-    "prisma:studio": "npm run prisma:studio --workspace apps/api"
+    "prisma:studio": "npm run prisma:studio --workspace apps/api",
+    "postinstall": "npm run build --workspace packages/shared"
   }
 }
