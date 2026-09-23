@@ -6,6 +6,7 @@ import { getAdapter } from "@/providers/provider.factory";
 import { getDecryptedCredentials } from "@/services/credential.service";
 import { recordLedgerEntryOnce } from "@/services/ledger.service";
 import { enqueueWebhookDeliveries } from "@/services/webhook.service";
+import { pollOnce } from "@/workers/webhookDelivery.worker";
 import { settleMockPayment } from "@/providers/mockTransport";
 import { ResolvedApiKey } from "@/services/apikey.service";
 import { NormalizedWebhookEvent } from "@/providers/provider.types";
@@ -134,6 +135,11 @@ export async function applyWebhookEvent(transaction: Transaction, event: Normali
   }
 
   await enqueueWebhookDeliveries(transaction.applicationId, transaction.id, toTransactionDto(updated));
+
+  // Deliver right away: on Vercel there is no always-on poller (Hobby cron runs
+  // once a day), so waiting for a worker tick would delay webhooks by hours.
+  // Failed deliveries stay PENDING and are retried by the worker/cron.
+  await pollOnce().catch(() => undefined);
 
   return updated;
 }
