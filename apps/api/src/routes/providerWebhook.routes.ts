@@ -6,6 +6,7 @@ import { ipRateLimit } from "@/middleware/rateLimit";
 import { getEffectiveConfig } from "@/services/providerConfig.service";
 import { verifyProviderWebhook } from "@/providers/live.webhook";
 import { syncFromProvider } from "@/services/payment.service";
+import { syncFunding } from "@/services/funding.service";
 
 export const providerWebhookRouter = Router();
 
@@ -33,6 +34,10 @@ providerWebhookRouter.post(
       const { reached } = await syncFromProvider(transaction, "provider_webhook");
       // Couldn't confirm with the provider right now: ask it to deliver again.
       if (!reached) return res.status(503).json({ received: false });
+    } else if (ids.length) {
+      // Not an API transaction: it may be a balance recharge.
+      const funding = await prisma.funding.findFirst({ where: { method: "MONCASH", providerTransactionId: { in: ids } } });
+      if (funding && !(await syncFunding(funding)).reached) return res.status(503).json({ received: false });
     }
     // Unknown ids are acknowledged too, so the provider doesn't keep retrying.
     res.json({ received: true });

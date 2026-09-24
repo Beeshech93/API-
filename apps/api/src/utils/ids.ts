@@ -10,4 +10,5 @@ function randomString(length: number): string {
 }
 
 export const newTransactionId = () => `txn_${randomString(20)}`;
+export const newFundingId = () => `fnd_${randomString(20)}`;
 export const newRequestId = () => `req_${randomString(16)}`;

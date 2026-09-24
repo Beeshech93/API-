@@ -3,6 +3,7 @@ import { Shell, NavItem } from "@/components/Shell";
 const ITEMS: NavItem[] = [
   { href: "/admin", key: "admin.overview" },
   { href: "/admin/clients", key: "admin.clients" },
+  { href: "/admin/funding", key: "admin.funding" },
   { href: "/admin/transactions", key: "nav.transactions" },
   { href: "/admin/providers", key: "admin.providers" },
   { href: "/admin/api-logs", key: "nav.apiLogs" },

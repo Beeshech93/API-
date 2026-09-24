@@ -11,6 +11,8 @@ import * as keys from "@/services/apikey.service";
 import * as webhooks from "@/services/webhook.service";
 import * as payments from "@/services/payment.service";
 import { getLimits, isLiveAllowed } from "@/services/limits.service";
+import * as funding from "@/services/funding.service";
+import { ipRateLimit } from "@/middleware/rateLimit";
 import { getUsage } from "@/services/usage.service";
 
 export const portalRouter = Router();
@@ -174,4 +176,37 @@ portalRouter.get("/api-logs", asyncHandler(async (req, res) => {
       response_time_ms: l.responseMs, ip: l.ip, provider: l.provider, environment: l.environment?.toLowerCase(), created_at: l.createdAt,
     })),
   });
+}));
+
+// ---- Funding (recharge the balance) ----------------------------------------
+
+const fundingSchema = z.object({
+  method: z.enum(["moncash", "natcash", "zelle", "bank_deposit", "bank_transfer", "crypto_usdt"]).transform((m) => m.toUpperCase() as import("@prisma/client").FundingMethod),
+  amount: z.number({ invalid_type_error: "Amount must be a number." }).positive(),
+  reference: z.string().trim().max(120).optional(),
+  note: z.string().trim().max(300).optional(),
+});
+
+portalRouter.get("/funding", asyncHandler(async (req, res) => {
+  const clientId = req.user!.clientId;
+  // In this order on purpose: listing re-checks pending fundings with the provider,
+  // and the balance must be read after that so it includes what was just settled.
+  const methods = await funding.listMethods();
+  const fundings = await funding.listClientFundings(clientId);
+  const balances = await payments.getCollectedBalance(clientId, "LIVE");
+  const htg = balances.find((b) => b.currency === "HTG");
+  res.json({
+    success: true,
+    methods,
+    balance: { currency: "HTG", available: htg?.available ?? 0, funded: htg?.funded ?? 0, collected: htg?.collected ?? 0 },
+    fundings: fundings.map(funding.serializeFunding),
+  });
+}));
+
+portalRouter.post("/funding", ipRateLimit(20, "funding"), asyncHandler(async (req, res) => {
+  const body = fundingSchema.parse(req.body);
+  const client = await prisma.client.findUnique({ where: { id: req.user!.clientId }, select: { id: true, liveEnabled: true } });
+  if (!client) throw new AppError("NOT_FOUND", "Client not found.");
+  const created = await funding.createFunding(client, body, req.ctx.requestId);
+  res.status(201).json({ success: true, funding: funding.serializeFunding(created) });
 }));

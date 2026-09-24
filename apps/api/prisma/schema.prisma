@@ -110,6 +110,7 @@ model Client {
   usageRecords UsageRecord[]
   invoices     Invoice[]
   apiLogs      ApiLog[]
+  fundings     Funding[]
 
   @@map("clients")
 }
@@ -396,4 +397,52 @@ model RateLimitCounter {
   @@id([key, windowStart])
   @@index([windowStart])
   @@map("rate_limit_counters")
+}
+
+// A client adding money to their HaitiPay balance (a "recharge"), the same ways the
+// payment provider offers its own partners: MonCash is automatic (hosted page,
+// confirmed by the provider); the others are requests an administrator verifies.
+enum FundingMethod {
+  MONCASH
+  NATCASH
+  ZELLE
+  BANK_DEPOSIT
+  BANK_TRANSFER
+  CRYPTO_USDT
+}
+
+enum FundingStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REJECTED
+}
+
+model Funding {
+  id                    String        @id
+  clientId              String        @map("client_id")
+  method                FundingMethod
+  amount                Decimal       @db.Decimal(14, 2)
+  // What was actually credited (an administrator may adjust it when approving).
+  creditedAmount        Decimal?      @db.Decimal(14, 2) @map("credited_amount")
+  currency              Currency      @default(HTG)
+  status                FundingStatus @default(PENDING)
+  // Client-supplied proof (transfer id, hash...) for manual methods.
+  reference             String?
+  note                  String?
+  providerTransactionId String?       @map("provider_transaction_id")
+  paymentUrl            String?       @map("payment_url")
+  reviewedBy            String?       @map("reviewed_by")
+  reviewedAt            DateTime?     @map("reviewed_at")
+  reviewNote            String?       @map("review_note")
+  requestId             String        @map("request_id")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@index([clientId, createdAt])
+  @@index([providerTransactionId])
+  @@index([status])
+  @@map("fundings")
 }

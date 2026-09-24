@@ -2,6 +2,7 @@ import { Shell, NavItem } from "@/components/Shell";
 
 const ITEMS: NavItem[] = [
   { href: "/dashboard", key: "nav.dashboard" },
+  { href: "/dashboard/funding", key: "nav.funding" },
   { href: "/dashboard/api-keys", key: "nav.apiKeys" },
   { href: "/dashboard/transactions", key: "nav.transactions" },
   { href: "/dashboard/webhooks", key: "nav.webhooks" },

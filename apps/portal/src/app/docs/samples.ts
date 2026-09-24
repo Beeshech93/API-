@@ -61,8 +61,9 @@ export function samples(base: string) {
   "balances": [ {
     "currency": "HTG",
     "collected": 50000, "fees": 500, "net": 49500,
+    "funded": 10000,
     "sent": 20000, "transfer_fees": 200,
-    "available": 29300
+    "available": 39300
   } ] }`,
     webhookPayload: `POST https://client.com/webhooks/haitipay\nX-HaitiPay-Signature: t=1758470400,v1=5257a869…\nX-HaitiPay-Event: payment.completed\n\n{\n  "event": "payment.completed",\n  "transaction_id": "txn_123",\n  "amount": 1000,\n  "currency": "HTG",\n  "provider": "moncash",\n  "status": "completed"\n}`,
   };

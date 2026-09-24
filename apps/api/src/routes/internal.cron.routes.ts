@@ -7,6 +7,7 @@ import { pollOnce } from "@/workers/webhookDelivery.worker";
 import { checkProviders } from "@/services/provider.service";
 import { purgeOldCounters } from "@/services/ratelimit.service";
 import { reconcileLive } from "@/services/payment.service";
+import { reconcileFundings } from "@/services/funding.service";
 
 export const internalCronRouter = Router();
 
@@ -25,6 +26,7 @@ internalCronRouter.get(
     await checkProviders();
     const purged = await purgeOldCounters();
     const reconciled = await reconcileLive();
-    res.json({ success: true, ...deliveries, purged_counters: purged, reconciled });
+    const fundings = await reconcileFundings();
+    res.json({ success: true, ...deliveries, purged_counters: purged, reconciled, fundings });
   })
 );

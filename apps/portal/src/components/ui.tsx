@@ -39,6 +39,7 @@ const BADGES: Record<string, string> = {
   paid: "bg-emerald-100 text-emerald-700",
   open: "bg-amber-100 text-amber-700",
   failed: "bg-red-100 text-red-700",
+  rejected: "bg-red-100 text-red-700",
   exhausted: "bg-red-100 text-red-700",
   down: "bg-red-100 text-red-700",
   past_due: "bg-red-100 text-red-700",
@@ -80,6 +81,16 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement> & {
     <label className="block text-sm">
       {label && <span className="block text-slate-600 mb-1">{label}</span>}
       <input {...rest} className={`w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand ${className}`} />
+    </label>
+  );
+}
+
+export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }) {
+  const { label, className = "", ...rest } = props;
+  return (
+    <label className="block text-sm">
+      {label && <span className="block text-slate-600 mb-1">{label}</span>}
+      <textarea {...rest} className={`w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand ${className}`} />
     </label>
   );
 }

@@ -12,6 +12,7 @@ import { ipRateLimit } from "@/middleware/rateLimit";
 import { audit } from "@/services/audit.service";
 import { getFeeConfig, saveFeeConfig } from "@/services/fee.service";
 import { getLimits, saveLimits } from "@/services/limits.service";
+import * as fundingService from "@/services/funding.service";
 import { checkProviders, listProviders } from "@/services/provider.service";
 import { clearConfig, getConfigSummary, saveConfig } from "@/services/providerConfig.service";
 import { getUsage } from "@/services/usage.service";
@@ -25,9 +26,10 @@ const actor = (req: import("express").Request) => ({ userId: req.user!.id, ip: c
 
 adminRouter.get("/overview", asyncHandler(async (_req, res) => {
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
-  const [clients, liveClients, requests, tx, failed, volume, providers] = await Promise.all([
+  const [clients, liveClients, pendingFundings, requests, tx, failed, volume, providers] = await Promise.all([
     prisma.client.count(),
     prisma.client.count({ where: { liveEnabled: true } }),
+    prisma.funding.count({ where: { status: "PENDING", method: { not: "MONCASH" } } }),
     prisma.usageRecord.aggregate({ where: { period: `${monthStart.getUTCFullYear()}-${String(monthStart.getUTCMonth() + 1).padStart(2, "0")}` }, _sum: { requests: true } }),
     prisma.transaction.count({ where: { environment: "LIVE" } }),
     prisma.transaction.count({ where: { environment: "LIVE", status: "FAILED" } }),
@@ -38,6 +40,7 @@ adminRouter.get("/overview", asyncHandler(async (_req, res) => {
     success: true,
     total_clients: clients,
     live_clients: liveClients,
+    pending_fundings: pendingFundings,
     api_requests: requests._sum.requests ?? 0,
     transactions: tx,
     failed_transactions: failed,
@@ -150,6 +153,33 @@ adminRouter.put("/settings/limits", asyncHandler(async (req, res) => {
   const limits = await saveLimits(limitsSchema.parse(req.body));
   await audit({ action: "admin.limits_updated", actorUserId: req.user!.id, ip: clientIp(req), metadata: { ...limits } });
   res.json({ success: true, limits });
+}));
+
+// ---- Funding (balance recharges) ---------------------------------------------
+
+const methodConfigSchema = z.object({ enabled: z.boolean(), minAmount: z.number().min(1).max(10_000_000), instructions: z.string().max(2000) });
+const fundingConfigSchema = z.object({
+  MONCASH: methodConfigSchema, NATCASH: methodConfigSchema, ZELLE: methodConfigSchema,
+  BANK_DEPOSIT: methodConfigSchema, BANK_TRANSFER: methodConfigSchema, CRYPTO_USDT: methodConfigSchema,
+});
+adminRouter.get("/settings/funding", asyncHandler(async (_req, res) => res.json({ success: true, methods: await fundingService.getFundingConfig() })));
+adminRouter.put("/settings/funding", asyncHandler(async (req, res) => {
+  const methods = await fundingService.saveFundingConfig(fundingConfigSchema.parse(req.body));
+  await audit({ action: "admin.funding_methods_updated", actorUserId: req.user!.id, ip: clientIp(req), metadata: { enabled: Object.entries(methods).filter(([, m]) => m.enabled).map(([k]) => k) } });
+  res.json({ success: true, methods });
+}));
+
+adminRouter.get("/funding", asyncHandler(async (req, res) => {
+  const status = typeof req.query.status === "string" ? z.enum(["pending", "completed", "failed", "rejected"]).parse(req.query.status).toUpperCase() as "PENDING" : undefined;
+  res.json({ success: true, fundings: await fundingService.listAllFundings(status) });
+}));
+adminRouter.post("/funding/:id/approve", ipRateLimit(60, "admin-funding"), asyncHandler(async (req, res) => {
+  const body = z.object({ amount: z.number().positive().optional(), note: z.string().trim().max(300).optional() }).parse(req.body ?? {});
+  res.json({ success: true, funding: fundingService.serializeFunding(await fundingService.approveFunding(req.params.id, { userId: req.user!.id }, body)) });
+}));
+adminRouter.post("/funding/:id/reject", ipRateLimit(60, "admin-funding"), asyncHandler(async (req, res) => {
+  const { note } = z.object({ note: z.string().trim().min(3).max(300) }).parse(req.body ?? {});
+  res.json({ success: true, funding: fundingService.serializeFunding(await fundingService.rejectFunding(req.params.id, { userId: req.user!.id }, note)) });
 }));
 
 // ---- Providers ---------------------------------------------------
