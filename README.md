@@ -39,7 +39,7 @@ CLIENT → API KEY → HAITIPAY API → validation → LIVE access / rate limits
 ```bash
 cp .env.example apps/api/.env      # then fill it in
 npm install
-npm run prisma:migrate --workspace @ayitipay/api
+npm run prisma:migrate --workspace @haitipay/api
 npx tsx apps/api/prisma/seed.ts    # providers, fee and limit settings
 npm run dev:api                    # :4000
 npm run dev:portal                 # :3000
@@ -49,5 +49,5 @@ npm test
 Promote the first administrator (never possible through the public API):
 
 ```bash
-npm run admin:promote --workspace @ayitipay/api -- you@example.com
+npm run admin:promote --workspace @haitipay/api -- you@example.com
 ```

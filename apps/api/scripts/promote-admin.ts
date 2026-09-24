@@ -1,6 +1,6 @@
 import { prisma } from "../src/utils/prisma";
 
-// Usage: npm run admin:promote --workspace @ayitipay/api -- someone@example.com
+// Usage: npm run admin:promote --workspace @haitipay/api -- someone@example.com
 // Admins are never created through the public API: promotion is an explicit,
 // out-of-band operator action against the database.
 const email = process.argv[2]?.toLowerCase();

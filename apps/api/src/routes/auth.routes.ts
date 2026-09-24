@@ -36,7 +36,7 @@ function setRefreshCookie(res: Response, token: string, expires: Date) {
 
 function assertTrustedOrigin(req: Request) {
   const origin = req.headers.origin;
-  if (!origin || origin !== env.portalAppUrl) throw new AppError("FORBIDDEN", "Untrusted origin.");
+  if (!origin || !env.portalAppUrls.includes(origin)) throw new AppError("FORBIDDEN", "Untrusted origin.");
 }
 
 function respond(res: Response, session: auth.Session, status = 200) {

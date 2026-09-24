@@ -3,13 +3,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ayitipay
-      POSTGRES_PASSWORD: ayitipay
-      POSTGRES_DB: ayitipay
+      POSTGRES_USER: haitipay
+      POSTGRES_PASSWORD: haitipay
+      POSTGRES_DB: haitipay
     ports:
       - "5432:5432"
     volumes:
-      - ayitipay_pgdata:/var/lib/postgresql/data
+      - haitipay_pgdata:/var/lib/postgresql/data
 
 volumes:
-  ayitipay_pgdata:
+  haitipay_pgdata:

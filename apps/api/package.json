@@ -1,5 +1,5 @@
 {
-  "name": "@ayitipay/api",
+  "name": "@haitipay/api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -17,7 +17,7 @@
     "admin:promote": "tsx scripts/promote-admin.ts"
   },
   "dependencies": {
-    "@ayitipay/shared": "*",
+    "@haitipay/shared": "*",
     "@prisma/client": "^5.20.0",
     "@vercel/functions": "^3.9.9",
     "bcryptjs": "^2.4.3",

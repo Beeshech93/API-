@@ -1,5 +1,5 @@
 {
-  "name": "@ayitipay/portal",
+  "name": "@haitipay/portal",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@ayitipay/shared": "*",
+    "@haitipay/shared": "*",
     "next": "14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

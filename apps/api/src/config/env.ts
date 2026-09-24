@@ -23,7 +23,12 @@ export const env = {
     accessTtlSeconds: Number(process.env.ACCESS_TOKEN_TTL_SECONDS ?? 15 * 60),
     refreshTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 30),
   },
-  portalAppUrl: process.env.PORTAL_APP_URL ?? "http://localhost:3000",
+  // The portal's address. Several may be listed, comma-separated (e.g. while moving to a new
+  // domain): every one is trusted as an origin, the first is the canonical one used in links.
+  portalAppUrls: (process.env.PORTAL_APP_URL ?? "http://localhost:3000").split(",").map((u) => u.trim().replace(/\/+$/, "")).filter(Boolean),
+  get portalAppUrl(): string {
+    return this.portalAppUrls[0];
+  },
   cronSecret: process.env.CRON_SECRET ?? "",
   // Public base URL of this API. LIVE transactions tell the provider to notify
   // `${apiPublicUrl}/webhooks/provider`; without it, results are polled instead.

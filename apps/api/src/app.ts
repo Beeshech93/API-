@@ -22,7 +22,7 @@ export function createApp() {
   app.use(requestContext);
   app.use(helmet());
   // Only the HaitiPay dashboard origin may call this API from a browser.
-  app.use(cors({ origin: env.portalAppUrl, credentials: true }));
+  app.use(cors({ origin: env.portalAppUrls, credentials: true }));
   // The raw body is kept so provider notifications can be signature-checked.
   app.use(
     express.json({
