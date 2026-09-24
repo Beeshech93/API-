@@ -9,7 +9,7 @@ import { Badge, Button, Card, ErrorNote, PageTitle, Table } from "@/components/u
 interface Detail {
   client: { id: string; name: string; status: string; live_enabled: boolean; services: { receive: boolean; send: boolean }; created_at: string };
   users: { id: string; email: string; role: string }[];
-  api_keys: { id: string; name: string; environment: string; last4: string; status: string; last_used_at: string | null }[];
+  api_keys: { id: string; name: string; category: string; environment: string; last4: string; status: string; last_used_at: string | null }[];
   usage: { period: string; requests: number; transactions: number };
   transactions: { id: string; provider: string; status: string; amount: number; currency: string; created_at: string }[];
   logs: { request_id: string; endpoint: string; method: string; status_code: number; created_at: string }[];
@@ -74,9 +74,9 @@ export default function ClientDetail({ params }: { params: { id: string } }) {
         </Card>
       </div>
       <h2 className="font-semibold text-navy mb-2">{t("nav.apiKeys")}</h2>
-      <Table head={[t("keys.name"), t("keys.environment"), t("keys.key"), t("keys.lastUsed"), t("common.status")]} empty={t("keys.empty")}>
+      <Table head={[t("keys.name"), t("keys.api"), t("keys.environment"), t("keys.key"), t("keys.lastUsed"), t("common.status")]} empty={t("keys.empty")}>
         {d.api_keys.map((k) => (
-          <tr key={k.id}><td>{k.name}</td><td><Badge value={k.environment} label={t(`env.${k.environment}`)} /></td><td className="font-mono text-xs">••••{k.last4}</td><td>{k.last_used_at ? new Date(k.last_used_at).toLocaleString() : t("common.never")}</td><td><Badge value={k.status} label={t(`status.${k.status}`)} /></td></tr>
+          <tr key={k.id}><td>{k.name}</td><td className="text-xs">{t(`keys.api.${k.category === "both" ? "legacy" : k.category}`)}</td><td><Badge value={k.environment} label={t(`env.${k.environment}`)} /></td><td className="font-mono text-xs">••••{k.last4}</td><td>{k.last_used_at ? new Date(k.last_used_at).toLocaleString() : t("common.never")}</td><td><Badge value={k.status} label={t(`status.${k.status}`)} /></td></tr>
         ))}
       </Table>
       <h2 className="font-semibold text-navy mt-6 mb-2">{t("nav.transactions")}</h2>

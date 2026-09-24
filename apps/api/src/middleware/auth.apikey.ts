@@ -52,6 +52,16 @@ export async function requireApiKey(req: Request, res: Response, next: NextFunct
   }
 }
 
+// A key belongs to one API (receiving payments or sending money). Even if its permissions
+// were ever edited, it can't be used on the other API. Keys from before the split (BOTH) can.
+export function requireCategory(kind: "receive" | "send") {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const category = req.apiAuth?.category;
+    if (category === "BOTH" || category === (kind === "receive" ? "RECEIVE" : "SEND")) return next();
+    next(new AppError("FORBIDDEN", `This key is for the ${category === "SEND" ? "send-money" : "receive-payments"} API, not the ${kind === "receive" ? "receive-payments" : "send-money"} API.`));
+  };
+}
+
 export function requirePermission(permission: string) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.apiAuth?.permissions.includes(permission)) {

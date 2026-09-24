@@ -190,6 +190,12 @@ model UsageRecord {
   @@map("usage_records")
 }
 
+enum ApiKeyCategory {
+  RECEIVE
+  SEND
+  BOTH
+}
+
 model ApiKey {
   id              String         @id @default(uuid())
   clientId        String         @map("client_id")
@@ -199,6 +205,8 @@ model ApiKey {
   last4           String
   hashedSecret    String         @map("hashed_secret")
   permissions     String[]
+  // Which API the key is for. BOTH exists only for keys created before the split.
+  category        ApiKeyCategory @default(RECEIVE)
   createdByUserId String?        @map("created_by_user_id")
   lastUsedAt      DateTime?      @map("last_used_at")
   revokedAt       DateTime?      @map("revoked_at")

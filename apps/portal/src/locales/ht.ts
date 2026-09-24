@@ -250,11 +250,18 @@ const ht: Record<MessageKey, string> = {
   "keys.api.receive": "Resevwa peman",
   "keys.api.send": "Voye lajan",
   "keys.api.legacy": "Tou de (ansyen kle)",
-  "keys.apiHint": "Yon kle fè pati yon sèl API. Kreye yon kle pou resevwa peman ak yon lòt pou voye lajan: yon kle ki fuit ka fè youn sèlman nan de yo.",
+  "keys.apiHint": "Chak kle fè pati yon sèl API, kidonk yon kle ki fuit ka fè youn sèlman nan de yo. Limit yo (3 kle TÈS, ak limit LIVE ou) aplike pa kategori.",
   "doc.receive.title": "API resepsyon",
   "doc.receive.body": "Tout sa ki sèvi pou kolekte lajan kliyan ou yo anba /api/v1/receive/{moncash|natcash}. Li gen sèlman peman — kreye yo, li yo epi lis yo — ansanm ak tranzaksyon yo ak balans lan. Li mande yon kle ki kreye pou API sa a (pèmisyon payments:*). Chemen orijinal /api/v1/{network}/… yo kontinye mache pou entegrasyon ki deja egziste yo.",
   "doc.send.title": "API voye lajan",
   "doc.send.body": "Tout sa ki sèvi pou peye lajan anba /api/v1/send/{moncash|natcash}. Li gen sèlman transfè — kreye yo, li yo epi lis yo — ansanm ak tranzaksyon yo ak balans lan. Li mande yon kle ki kreye pou API sa a (pèmisyon transfers:*). Peman yo pran nan balans disponib ou.",
+
+  "keys.cat.receive.desc": "Kle pou API resepsyon an (/api/v1/receive). Itilize yo sou sèvè ou pou kolekte lajan kliyan yo.",
+  "keys.cat.send.desc": "Kle pou API voye lajan an (/api/v1/send). Itilize yo sou sèvè ou pou peye sou pòtfèy MonCash ak NatCash.",
+  "keys.cat.receive.create": "Kreye yon kle resepsyon",
+  "keys.cat.send.create": "Kreye yon kle voye lajan",
+  "keys.older.title": "Ansyen kle (tou de API)",
+  "keys.older.body": "Kle sa yo te kreye anvan yo te separe kle yo pa kategori epi yo ka toujou itilize tou de API. Rejenere youn kite l jan l ye a; ranplase l pa yon kle pou chak kalite le w kapab.",
 };
 
 export default ht;

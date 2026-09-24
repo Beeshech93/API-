@@ -248,11 +248,18 @@ const en = {
   "keys.api.receive": "Receive payments",
   "keys.api.send": "Send money",
   "keys.api.legacy": "Both (older key)",
-  "keys.apiHint": "A key belongs to one API. Create one key to receive payments and another to send money, so a leaked key can only do one of the two.",
+  "keys.apiHint": "Each key belongs to one API, so a leaked key can only do one of the two. Limits (3 TEST keys, and your LIVE limit) apply per category.",
   "doc.receive.title": "Receive API",
   "doc.receive.body": "Everything for collecting money from your customers lives under /api/v1/receive/{moncash|natcash}. It only has payments — create, read and list them — plus their transactions and balance. It needs a key created for this API (payments:* permissions). The original paths /api/v1/{network}/… keep working for existing integrations.",
   "doc.send.title": "Send API",
   "doc.send.body": "Everything for paying money out lives under /api/v1/send/{moncash|natcash}. It only has transfers — create, read and list them — plus their transactions and balance. It needs a key created for this API (transfers:* permissions). Payouts draw on your available balance.",
+
+  "keys.cat.receive.desc": "Keys for the receive-payments API (/api/v1/receive). Use them on your server to collect money from customers.",
+  "keys.cat.send.desc": "Keys for the send-money API (/api/v1/send). Use them on your server to pay out to MonCash and NatCash wallets.",
+  "keys.cat.receive.create": "Create a receive-payments key",
+  "keys.cat.send.create": "Create a send-money key",
+  "keys.older.title": "Older keys (both APIs)",
+  "keys.older.body": "These keys were created before keys were split by category and can still use both APIs. Rotating one keeps it as is; replace it with one key of each kind when you can.",
 } as const;
 
 export type MessageKey = keyof typeof en;

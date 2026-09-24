@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Network } from "@prisma/client";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { AppError } from "@/utils/errors";
-import { requireApiKey, requireAnyPermission, requirePermission } from "@/middleware/auth.apikey";
+import { requireApiKey, requireAnyPermission, requireCategory, requirePermission } from "@/middleware/auth.apikey";
 import { apiLogger } from "@/middleware/apiLogger";
 import { ipRateLimit } from "@/middleware/rateLimit";
 import {
@@ -57,6 +57,7 @@ apiV1Router.post(
 apiV1Router.post(
   "/sandbox/fund",
   requireApiKey,
+  requireCategory("send"),
   requirePermission("transfers:create"),
   asyncHandler(async (req, res) => {
     if (req.apiAuth!.environment !== "TEST") throw new AppError("FORBIDDEN", "Sandbox funding is only available with a TEST API key.");
@@ -89,6 +90,11 @@ network.use((req, _res, next) => {
   next();
 });
 network.use(requireApiKey);
+// Which API this request is for: the prefix (/receive, /send) or, on the original paths, what it touches.
+network.use((req, res, next) => {
+  const kind = req.ctx.service ?? (req.path.startsWith("/payments") ? "receive" : req.path.startsWith("/transfers") ? "send" : undefined);
+  return kind ? requireCategory(kind)(req, res, next) : next();
+});
 
 // In a service API, transaction lookups are limited to that service's kind of operation.
 const kindOf = (req: { ctx: { service?: "receive" | "send" } }): "PAYMENT" | "TRANSFER" | undefined =>

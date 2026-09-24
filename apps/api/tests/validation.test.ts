@@ -38,3 +38,12 @@ describe("account services", () => {
     expect(adminCreateClientSchema.parse(base).services).toEqual(["receive", "send"]);
   });
 });
+
+describe("key categories", () => {
+  it("a key is created by category or by permissions, and the category is normalised", () => {
+    expect(createKeySchema.parse({ name: "k", environment: "TEST", category: "send" }).category).toBe("SEND");
+    expect(createKeySchema.parse({ name: "k", environment: "TEST", category: "receive" }).category).toBe("RECEIVE");
+    expect(() => createKeySchema.parse({ name: "k", environment: "TEST" })).toThrow();
+    expect(() => createKeySchema.parse({ name: "k", environment: "TEST", category: "both" })).toThrow();
+  });
+});

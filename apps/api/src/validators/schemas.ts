@@ -25,11 +25,16 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(72),
 });
 
-export const createKeySchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  environment: z.enum(["TEST", "LIVE"]),
-  permissions: z.array(z.enum(PERMISSIONS)).min(1),
-});
+// A key is for one API: "receive" (payments) or "send" (transfers). If the category is
+// left out it is worked out from the permissions; permissions default to the category's.
+export const createKeySchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    environment: z.enum(["TEST", "LIVE"]),
+    category: z.enum(["receive", "send"]).transform((c) => c.toUpperCase() as "RECEIVE" | "SEND").optional(),
+    permissions: z.array(z.enum(PERMISSIONS)).min(1).optional(),
+  })
+  .refine((v) => v.category !== undefined || v.permissions !== undefined, { message: "Choose the API (category) or the permissions." });
 
 // Haitian numbers: country code 509 + 8 digits. Accepts "+509 3xxx-xxxx" style input.
 const phone = z

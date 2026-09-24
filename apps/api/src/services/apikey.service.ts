@@ -1,4 +1,4 @@
-import { ApiEnvironment } from "@prisma/client";
+import { ApiEnvironment, ApiKeyCategory } from "@prisma/client";
 import { prisma } from "@/utils/prisma";
 import { AppError } from "@/utils/errors";
 import { extractKeyPrefix, generateApiKey, maskApiKey, verifyApiKey } from "@/utils/apiKeyCrypto";
@@ -21,11 +21,23 @@ export interface AuthenticatedKey {
   clientId: string;
   environment: ApiEnvironment;
   permissions: string[];
+  category: ApiKeyCategory;
 }
+
+// A key belongs to one API: receiving payments or sending money. What each may hold:
+export type NewKeyCategory = "RECEIVE" | "SEND";
+export const CATEGORY_PERMISSIONS: Record<NewKeyCategory, Permission[]> = {
+  RECEIVE: ["payments:read", "payments:create", "transactions:read", "balance:read", "webhooks:manage"],
+  SEND: ["transfers:read", "transfers:create", "transactions:read", "balance:read", "webhooks:manage"],
+};
+export const DEFAULT_CATEGORY_PERMISSIONS: Record<NewKeyCategory, Permission[]> = {
+  RECEIVE: ["payments:read", "payments:create", "transactions:read", "balance:read"],
+  SEND: ["transfers:read", "transfers:create", "transactions:read", "balance:read"],
+};
 
 function serialize(key: {
   id: string; name: string; environment: ApiEnvironment; keyPrefix: string; last4: string;
-  permissions: string[]; lastUsedAt: Date | null; revokedAt: Date | null; createdAt: Date;
+  permissions: string[]; category: ApiKeyCategory; lastUsedAt: Date | null; revokedAt: Date | null; createdAt: Date;
 }) {
   return {
     id: key.id,
@@ -33,6 +45,7 @@ function serialize(key: {
     environment: key.environment,
     masked_key: maskApiKey(key.keyPrefix, key.last4),
     permissions: key.permissions,
+    category: key.category.toLowerCase(),
     last_used_at: key.lastUsedAt,
     status: key.revokedAt ? "revoked" : "active",
     created_at: key.createdAt,
@@ -67,13 +80,28 @@ export function assertPermissionsFit(services: { canReceive: boolean; canSend: b
 export async function createKey(
   clientId: string,
   actor: { userId: string; ip?: string },
-  input: { name: string; environment: ApiEnvironment; permissions: Permission[] }
+  input: { name: string; environment: ApiEnvironment; category?: NewKeyCategory; permissions?: Permission[] }
 ) {
-  const account = await prisma.client.findUnique({ where: { id: clientId }, select: { canReceive: true, canSend: true } });
-  assertPermissionsFit(account ?? { canReceive: false, canSend: false }, input.permissions);
+  const account = (await prisma.client.findUnique({ where: { id: clientId }, select: { canReceive: true, canSend: true } })) ?? { canReceive: false, canSend: false };
 
+  // Which API is this key for? Explicit, or worked out from what it may do.
+  const hasPayments = input.permissions?.some((p) => p.startsWith("payments:")) ?? false;
+  const hasTransfers = input.permissions?.some((p) => p.startsWith("transfers:")) ?? false;
+  if (hasPayments && hasTransfers) {
+    throw new AppError("INVALID_REQUEST", "A key is either for the receive-payments API or for the send-money API, not both. Create one key for each.");
+  }
+  const category: NewKeyCategory = input.category ?? (hasTransfers ? "SEND" : hasPayments ? "RECEIVE" : account.canReceive ? "RECEIVE" : "SEND");
+  if ((category === "RECEIVE" && hasTransfers) || (category === "SEND" && hasPayments)) {
+    throw new AppError("INVALID_REQUEST", `A ${category === "RECEIVE" ? "receive-payments" : "send-money"} key can't have ${category === "RECEIVE" ? "transfers" : "payments"} permissions.`);
+  }
+  const permissions = input.permissions ?? DEFAULT_CATEGORY_PERMISSIONS[category];
+  if (!account.canReceive && category === "RECEIVE") throw new AppError("FORBIDDEN", "This account is not set up to receive payments, so it can't have receive-payments keys.");
+  if (!account.canSend && category === "SEND") throw new AppError("FORBIDDEN", "This account is not set up to send money, so it can't have send-money keys.");
+  assertPermissionsFit(account, permissions);
+
+  // Limits are per category: an account can hold receive keys and send keys side by side.
   const activeOfEnvironment = await prisma.apiKey.count({
-    where: { clientId, environment: input.environment, revokedAt: null },
+    where: { clientId, environment: input.environment, category, revokedAt: null },
   });
 
   if (input.environment === "LIVE") {
@@ -95,7 +123,8 @@ export async function createKey(
       keyPrefix: generated.keyPrefix,
       last4: generated.last4,
       hashedSecret: generated.hashedSecret,
-      permissions: input.permissions,
+      permissions,
+      category,
       createdByUserId: actor.userId,
     },
   });
@@ -128,6 +157,7 @@ export async function rotateKey(clientId: string, keyId: string, actor: { userId
         last4: generated.last4,
         hashedSecret: generated.hashedSecret,
         permissions: key.permissions,
+        category: key.category,
         createdByUserId: actor.userId,
       },
     }),
@@ -145,5 +175,5 @@ export async function authenticate(fullToken: string): Promise<AuthenticatedKey>
     throw new AppError("INVALID_API_KEY", "Invalid API key.");
   }
   prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
-  return { apiKeyId: key.id, clientId: key.clientId, environment: key.environment, permissions: key.permissions };
+  return { apiKeyId: key.id, clientId: key.clientId, environment: key.environment, permissions: key.permissions, category: key.category };
 }

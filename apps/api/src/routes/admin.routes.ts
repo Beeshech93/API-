@@ -83,7 +83,7 @@ adminRouter.get("/clients/:id", asyncHandler(async (req, res) => {
     success: true,
     client: { id: client.id, name: client.name, status: client.status.toLowerCase(), live_enabled: client.liveEnabled, services: { receive: client.canReceive, send: client.canSend }, created_at: client.createdAt },
     users: client.users,
-    api_keys: client.apiKeys.map((k) => ({ id: k.id, name: k.name, environment: k.environment.toLowerCase(), last4: k.last4, status: k.revokedAt ? "revoked" : "active", last_used_at: k.lastUsedAt })),
+    api_keys: client.apiKeys.map((k) => ({ id: k.id, name: k.name, category: k.category.toLowerCase(), environment: k.environment.toLowerCase(), last4: k.last4, status: k.revokedAt ? "revoked" : "active", last_used_at: k.lastUsedAt })),
     usage,
     transactions: transactions.map((t) => ({ id: t.id, provider: t.provider.toLowerCase(), status: t.status.toLowerCase(), amount: Number(t.amount), currency: t.currency, created_at: t.createdAt })),
     logs: logs.map((l) => ({ request_id: l.requestId, endpoint: l.endpoint, method: l.method, status_code: l.statusCode, created_at: l.createdAt })),

@@ -250,11 +250,18 @@ const fr: Record<MessageKey, string> = {
   "keys.api.receive": "Recevoir des paiements",
   "keys.api.send": "Envoyer de l'argent",
   "keys.api.legacy": "Les deux (ancienne clé)",
-  "keys.apiHint": "Une clé appartient à une seule API. Créez une clé pour recevoir des paiements et une autre pour envoyer de l'argent : une clé divulguée ne peut faire que l'un des deux.",
+  "keys.apiHint": "Chaque clé appartient à une seule API : une clé divulguée ne peut faire que l'un des deux. Les limites (3 clés TEST, et votre limite LIVE) s'appliquent par catégorie.",
   "doc.receive.title": "API de réception",
   "doc.receive.body": "Tout ce qui sert à encaisser l'argent de vos clients se trouve sous /api/v1/receive/{moncash|natcash}. Elle ne contient que les paiements — les créer, les lire et les lister — ainsi que leurs transactions et le solde. Elle exige une clé créée pour cette API (permissions payments:*). Les chemins d'origine /api/v1/{network}/… continuent de fonctionner pour les intégrations existantes.",
   "doc.send.title": "API d'envoi",
   "doc.send.body": "Tout ce qui sert à verser de l'argent se trouve sous /api/v1/send/{moncash|natcash}. Elle ne contient que les transferts — les créer, les lire et les lister — ainsi que leurs transactions et le solde. Elle exige une clé créée pour cette API (permissions transfers:*). Les versements puisent dans votre solde disponible.",
+
+  "keys.cat.receive.desc": "Clés de l'API de réception (/api/v1/receive). À utiliser sur votre serveur pour encaisser l'argent de vos clients.",
+  "keys.cat.send.desc": "Clés de l'API d'envoi (/api/v1/send). À utiliser sur votre serveur pour verser vers des portefeuilles MonCash et NatCash.",
+  "keys.cat.receive.create": "Créer une clé de réception",
+  "keys.cat.send.create": "Créer une clé d'envoi",
+  "keys.older.title": "Anciennes clés (les deux API)",
+  "keys.older.body": "Ces clés ont été créées avant la séparation par catégorie et peuvent encore utiliser les deux API. La régénérer la conserve telle quelle ; remplacez-la dès que possible par une clé de chaque type.",
 };
 
 export default fr;

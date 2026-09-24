@@ -16,10 +16,6 @@ const DEFAULT_PERMISSIONS: Record<Api, string[]> = {
   receive: ["payments:read", "payments:create", "transactions:read", "balance:read"],
   send: ["transfers:read", "transfers:create", "transactions:read", "balance:read"],
 };
-const apiOf = (permissions: string[]): "receive" | "send" | "both" => {
-  const r = permissions.some((p) => p.startsWith("payments:")), s = permissions.some((p) => p.startsWith("transfers:"));
-  return r && s ? "both" : s ? "send" : "receive";
-};
 
 interface Key {
   id: string;
@@ -27,6 +23,7 @@ interface Key {
   environment: "TEST" | "LIVE";
   masked_key: string;
   permissions: string[];
+  category: "receive" | "send" | "both";
   last_used_at: string | null;
   status: "active" | "revoked";
   created_at: string;
@@ -44,6 +41,9 @@ export default function ApiKeysPage() {
   const api_ = available.includes(chosen) ? chosen : available[0] ?? "receive";
   const allowed = API_PERMISSIONS[api_];
   const [permissions, setPermissions] = useState<string[]>(DEFAULT_PERMISSIONS.receive);
+  const active = (list: Key[]) => list.filter((k) => k.status === "active");
+  const ofCategory = (c: Key["category"]) => keys.filter((k) => k.category === c);
+  const olderKeys = ofCategory("both");
   const [revealed, setRevealed] = useState<(Key & { api_key: string }) | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export default function ApiKeysPage() {
     setBusy(true);
     setError(null);
     try {
-      const created = await api<Key & { api_key: string }>("/portal/api-keys", { method: "POST", body: { name, environment, permissions: permissions.filter((p) => allowed.includes(p)) } });
+      const created = await api<Key & { api_key: string }>("/portal/api-keys", { method: "POST", body: { name, environment, category: api_, permissions: permissions.filter((p) => allowed.includes(p)) } });
       setRevealed(created);
       setTestResult(null);
       setName("");
@@ -102,6 +102,30 @@ export default function ApiKeysPage() {
     }
   }
 
+  const KeyTable = ({ list }: { list: Key[] }) => (
+    <Table head={[t("keys.name"), t("keys.key"), t("keys.environment"), t("keys.permissions"), t("keys.created"), t("keys.lastUsed"), t("common.status"), ""]} empty={t("keys.empty")}>
+      {list.map((k) => (
+        <tr key={k.id}>
+          <td className="font-medium">{k.name}</td>
+          <td className="font-mono text-xs whitespace-nowrap">{k.masked_key}</td>
+          <td><Badge value={k.environment.toLowerCase()} label={t(`env.${k.environment.toLowerCase()}`)} /></td>
+          <td className="text-xs text-slate-500 max-w-[220px]">{k.permissions.join(", ")}</td>
+          <td className="whitespace-nowrap">{new Date(k.created_at).toLocaleDateString()}</td>
+          <td className="whitespace-nowrap">{k.last_used_at ? new Date(k.last_used_at).toLocaleString() : t("common.never")}</td>
+          <td><Badge value={k.status} label={t(`status.${k.status}`)} /></td>
+          <td className="whitespace-nowrap">
+            {k.status === "active" && (
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => rotate(k.id)}>{t("keys.rotate")}</Button>
+                <Button variant="danger" onClick={() => revoke(k.id)}>{t("keys.revoke")}</Button>
+              </div>
+            )}
+          </td>
+        </tr>
+      ))}
+    </Table>
+  );
+
   const toggle = (p: string) => setPermissions((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]));
 
   return (
@@ -121,8 +145,25 @@ export default function ApiKeysPage() {
         </Card>
       )}
 
+      {/* Keys are grouped by what they are for: receiving payments or sending money. */}
+      <div role="tablist" className="flex flex-wrap gap-2 mb-4">
+        {available.map((a) => (
+          <button
+            key={a}
+            role="tab"
+            type="button"
+            aria-selected={api_ === a}
+            onClick={() => { setChosen(a); setPermissions(DEFAULT_PERMISSIONS[a]); setError(null); }}
+            className={`px-5 py-2.5 rounded-full border text-sm font-semibold ${api_ === a ? "bg-brand text-white border-brand" : "border-slate-300 text-slate-600 hover:border-brand"}`}
+          >
+            {t(`keys.api.${a}`)} <span className={`ml-1 text-xs ${api_ === a ? "text-white/80" : "text-slate-400"}`}>({active(ofCategory(a)).length})</span>
+          </button>
+        ))}
+      </div>
+      <p className="text-sm text-slate-600 mb-4 max-w-3xl">{t(`keys.cat.${api_}.desc`)}</p>
+
       <Card className="p-5 mb-6">
-        <h2 className="font-semibold text-navy mb-3">{t("keys.create")}</h2>
+        <h2 className="font-semibold text-navy mb-3">{t(`keys.cat.${api_}.create`)}</h2>
         <div className="grid sm:grid-cols-2 gap-3">
           <TextInput label={t("keys.name")} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
           <Select label={t("keys.environment")} value={environment} onChange={(e) => setEnvironment(e.target.value as "TEST" | "LIVE")}>
@@ -130,23 +171,6 @@ export default function ApiKeysPage() {
             <option value="LIVE">{t("env.live")}</option>
           </Select>
         </div>
-        <fieldset className="mt-4">
-          <legend className="text-sm text-slate-600 mb-2">{t("keys.api")}</legend>
-          <div className="flex flex-wrap gap-2">
-            {available.map((a) => (
-              <button
-                key={a}
-                type="button"
-                aria-pressed={api_ === a}
-                onClick={() => { setChosen(a); setPermissions(DEFAULT_PERMISSIONS[a]); }}
-                className={`px-4 py-2 rounded-full border text-sm font-medium ${api_ === a ? "bg-brand text-white border-brand" : "border-slate-300 text-slate-600 hover:border-brand"}`}
-              >
-                {t(`keys.api.${a}`)}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-slate-500 mt-2">{t("keys.apiHint")}</p>
-        </fieldset>
         <fieldset className="mt-4">
           <legend className="text-sm text-slate-600 mb-2">{t("keys.permissions")}</legend>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -157,35 +181,23 @@ export default function ApiKeysPage() {
               </label>
             ))}
           </div>
+          <p className="text-xs text-slate-500 mt-2">{t("keys.apiHint")}</p>
         </fieldset>
         <div className="mt-4">
-          <Button onClick={create} disabled={busy || !name.trim() || permissions.filter((p) => allowed.includes(p)).length === 0}>{t("keys.create")}</Button>
+          <Button onClick={create} disabled={busy || !name.trim() || permissions.filter((p) => allowed.includes(p)).length === 0}>{t(`keys.cat.${api_}.create`)}</Button>
         </div>
         <ErrorNote message={error} />
       </Card>
 
-      <Table head={[t("keys.name"), t("keys.key"), t("keys.environment"), t("keys.api"), t("keys.permissions"), t("keys.created"), t("keys.lastUsed"), t("common.status"), ""]} empty={t("keys.empty")}>
-        {keys.map((k) => (
-          <tr key={k.id}>
-            <td className="font-medium">{k.name}</td>
-            <td className="font-mono text-xs whitespace-nowrap">{k.masked_key}</td>
-            <td><Badge value={k.environment.toLowerCase()} label={t(`env.${k.environment.toLowerCase()}`)} /></td>
-            <td className="text-xs">{t(`keys.api.${apiOf(k.permissions) === "both" ? "legacy" : apiOf(k.permissions)}`)}</td>
-            <td className="text-xs text-slate-500 max-w-[220px]">{k.permissions.join(", ")}</td>
-            <td className="whitespace-nowrap">{new Date(k.created_at).toLocaleDateString()}</td>
-            <td className="whitespace-nowrap">{k.last_used_at ? new Date(k.last_used_at).toLocaleString() : t("common.never")}</td>
-            <td><Badge value={k.status} label={t(`status.${k.status}`)} /></td>
-            <td className="whitespace-nowrap">
-              {k.status === "active" && (
-                <div className="flex gap-2">
-                  <Button variant="secondary" onClick={() => rotate(k.id)}>{t("keys.rotate")}</Button>
-                  <Button variant="danger" onClick={() => revoke(k.id)}>{t("keys.revoke")}</Button>
-                </div>
-              )}
-            </td>
-          </tr>
-        ))}
-      </Table>
+      <KeyTable list={ofCategory(api_)} />
+
+      {olderKeys.length > 0 && (
+        <div className="mt-8">
+          <h2 className="font-semibold text-navy mb-1">{t("keys.older.title")}</h2>
+          <p className="text-sm text-slate-500 mb-3 max-w-3xl">{t("keys.older.body")}</p>
+          <KeyTable list={olderKeys} />
+        </div>
+      )}
     </div>
   );
 }

@@ -250,11 +250,18 @@ const es: Record<MessageKey, string> = {
   "keys.api.receive": "Recibir pagos",
   "keys.api.send": "Enviar dinero",
   "keys.api.legacy": "Ambas (clave anterior)",
-  "keys.apiHint": "Una clave pertenece a una sola API. Crea una clave para recibir pagos y otra para enviar dinero: una clave filtrada solo puede hacer una de las dos cosas.",
+  "keys.apiHint": "Cada clave pertenece a una sola API, así que una clave filtrada solo puede hacer una de las dos cosas. Los límites (3 claves de PRUEBA y tu límite LIVE) se aplican por categoría.",
   "doc.receive.title": "API de recepción",
   "doc.receive.body": "Todo lo necesario para cobrar a tus clientes está bajo /api/v1/receive/{moncash|natcash}. Solo contiene pagos — crearlos, leerlos y listarlos — más sus transacciones y el saldo. Requiere una clave creada para esta API (permisos payments:*). Las rutas originales /api/v1/{network}/… siguen funcionando para las integraciones existentes.",
   "doc.send.title": "API de envío",
   "doc.send.body": "Todo lo necesario para pagar dinero está bajo /api/v1/send/{moncash|natcash}. Solo contiene transferencias — crearlas, leerlas y listarlas — más sus transacciones y el saldo. Requiere una clave creada para esta API (permisos transfers:*). Los envíos usan tu saldo disponible.",
+
+  "keys.cat.receive.desc": "Claves de la API de recepción (/api/v1/receive). Úsalas en tu servidor para cobrar a tus clientes.",
+  "keys.cat.send.desc": "Claves de la API de envío (/api/v1/send). Úsalas en tu servidor para pagar a billeteras MonCash y NatCash.",
+  "keys.cat.receive.create": "Crear una clave de recepción",
+  "keys.cat.send.create": "Crear una clave de envío",
+  "keys.older.title": "Claves anteriores (ambas APIs)",
+  "keys.older.body": "Estas claves se crearon antes de separarlas por categoría y aún pueden usar ambas APIs. Regenerar una la deja igual; reemplázala cuando puedas por una clave de cada tipo.",
 };
 
 export default es;
