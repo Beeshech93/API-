@@ -61,7 +61,7 @@ export default function ConsolePage() {
         </div>
         <Button
           disabled={!testKey || busy}
-          onClick={() => run(() => callPublicApi(`/${provider}/${operation}`, apiKey, { method: "POST", headers: { "Idempotency-Key": newKey() }, body: { amount, currency: "HTG", phone, reference: `console_${Date.now()}` } }))}
+          onClick={() => run(() => callPublicApi(`/${operation === "payments" ? "receive" : "send"}/${provider}/${operation}`, apiKey, { method: "POST", headers: { "Idempotency-Key": newKey() }, body: { amount, currency: "HTG", phone, reference: `console_${Date.now()}` } }))}
         >
           {t("con.create")}
         </Button>
@@ -77,7 +77,7 @@ export default function ConsolePage() {
               <Button variant="danger" disabled={busy} onClick={() => run(() => callPublicApi(`/sandbox/transactions/${id}/simulate`, apiKey, { method: "POST", body: { outcome: "failed" } }))}>{t("con.failure")}</Button>
             </div>
           )}
-          {id && <div className="mt-2"><Button variant="secondary" disabled={busy} onClick={() => run(() => callPublicApi(`/${provider}/transactions/${id}`, apiKey))}>{t("con.refresh")}</Button></div>}
+          {id && <div className="mt-2"><Button variant="secondary" disabled={busy} onClick={() => run(() => callPublicApi(`/${operation === "payments" ? "receive" : "send"}/${provider}/${operation}/${id}`, apiKey))}>{t("con.refresh")}</Button></div>}
         </>
       )}
     </div>

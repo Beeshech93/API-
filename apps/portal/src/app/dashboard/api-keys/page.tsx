@@ -6,11 +6,20 @@ import { useErrorMessage, useT } from "@/lib/i18n";
 import { Badge, Button, Card, CopyButton, ErrorNote, PageTitle, Select, Table, TextInput } from "@/components/ui";
 import { useAccount } from "@/lib/useAccount";
 
-const PERMISSIONS = ["payments:read", "payments:create", "transfers:read", "transfers:create", "balance:read", "transactions:read", "webhooks:manage"];
-const DEFAULT_PERMISSIONS = ["payments:read", "payments:create", "transfers:read", "transfers:create", "balance:read", "transactions:read"];
-// Permissions that only make sense for one of the two things an account can do.
-const RECEIVE_ONLY = ["payments:read", "payments:create"];
-const SEND_ONLY = ["transfers:read", "transfers:create"];
+// Receiving payments and sending money are two separate APIs, each with its own kind of key.
+type Api = "receive" | "send";
+const API_PERMISSIONS: Record<Api, string[]> = {
+  receive: ["payments:read", "payments:create", "transactions:read", "balance:read", "webhooks:manage"],
+  send: ["transfers:read", "transfers:create", "transactions:read", "balance:read", "webhooks:manage"],
+};
+const DEFAULT_PERMISSIONS: Record<Api, string[]> = {
+  receive: ["payments:read", "payments:create", "transactions:read", "balance:read"],
+  send: ["transfers:read", "transfers:create", "transactions:read", "balance:read"],
+};
+const apiOf = (permissions: string[]): "receive" | "send" | "both" => {
+  const r = permissions.some((p) => p.startsWith("payments:")), s = permissions.some((p) => p.startsWith("transfers:"));
+  return r && s ? "both" : s ? "send" : "receive";
+};
 
 interface Key {
   id: string;
@@ -30,8 +39,11 @@ export default function ApiKeysPage() {
   const [name, setName] = useState("");
   const [environment, setEnvironment] = useState<"TEST" | "LIVE">("TEST");
   const account = useAccount();
-  const allowed = PERMISSIONS.filter((p) => !(RECEIVE_ONLY.includes(p) && account && !account.services.receive) && !(SEND_ONLY.includes(p) && account && !account.services.send));
-  const [permissions, setPermissions] = useState<string[]>(DEFAULT_PERMISSIONS);
+  const available: Api[] = (["receive", "send"] as const).filter((a) => !account || account.services[a]);
+  const [chosen, setChosen] = useState<Api>("receive");
+  const api_ = available.includes(chosen) ? chosen : available[0] ?? "receive";
+  const allowed = API_PERMISSIONS[api_];
+  const [permissions, setPermissions] = useState<string[]>(DEFAULT_PERMISSIONS.receive);
   const [revealed, setRevealed] = useState<(Key & { api_key: string }) | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +131,23 @@ export default function ApiKeysPage() {
           </Select>
         </div>
         <fieldset className="mt-4">
+          <legend className="text-sm text-slate-600 mb-2">{t("keys.api")}</legend>
+          <div className="flex flex-wrap gap-2">
+            {available.map((a) => (
+              <button
+                key={a}
+                type="button"
+                aria-pressed={api_ === a}
+                onClick={() => { setChosen(a); setPermissions(DEFAULT_PERMISSIONS[a]); }}
+                className={`px-4 py-2 rounded-full border text-sm font-medium ${api_ === a ? "bg-brand text-white border-brand" : "border-slate-300 text-slate-600 hover:border-brand"}`}
+              >
+                {t(`keys.api.${a}`)}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-2">{t("keys.apiHint")}</p>
+        </fieldset>
+        <fieldset className="mt-4">
           <legend className="text-sm text-slate-600 mb-2">{t("keys.permissions")}</legend>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {allowed.map((p) => (
@@ -135,12 +164,13 @@ export default function ApiKeysPage() {
         <ErrorNote message={error} />
       </Card>
 
-      <Table head={[t("keys.name"), t("keys.key"), t("keys.environment"), t("keys.permissions"), t("keys.created"), t("keys.lastUsed"), t("common.status"), ""]} empty={t("keys.empty")}>
+      <Table head={[t("keys.name"), t("keys.key"), t("keys.environment"), t("keys.api"), t("keys.permissions"), t("keys.created"), t("keys.lastUsed"), t("common.status"), ""]} empty={t("keys.empty")}>
         {keys.map((k) => (
           <tr key={k.id}>
             <td className="font-medium">{k.name}</td>
             <td className="font-mono text-xs whitespace-nowrap">{k.masked_key}</td>
             <td><Badge value={k.environment.toLowerCase()} label={t(`env.${k.environment.toLowerCase()}`)} /></td>
+            <td className="text-xs">{t(`keys.api.${apiOf(k.permissions) === "both" ? "legacy" : apiOf(k.permissions)}`)}</td>
             <td className="text-xs text-slate-500 max-w-[220px]">{k.permissions.join(", ")}</td>
             <td className="whitespace-nowrap">{new Date(k.created_at).toLocaleDateString()}</td>
             <td className="whitespace-nowrap">{k.last_used_at ? new Date(k.last_used_at).toLocaleString() : t("common.never")}</td>

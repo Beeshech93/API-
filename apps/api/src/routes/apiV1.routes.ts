@@ -28,7 +28,7 @@ apiV1Router.get("/health", (_req, res) => {
 apiV1Router.get(
   "/quote",
   requireApiKey,
-  requirePermission("payments:read"),
+  requireAnyPermission("payments:read", "transfers:read"),
   asyncHandler(async (req, res) => {
     const q = quoteQuerySchema.parse(req.query);
     const config = await getFeeConfig();
@@ -70,16 +70,29 @@ apiV1Router.post(
 
 const NETWORKS: Record<string, Network> = { moncash: "MONCASH", natcash: "NATCASH" };
 
-// /api/v1/moncash/* and /api/v1/natcash/* expose the same operations.
+// Two separate APIs share this router:
+//   /api/v1/receive/{moncash|natcash}/...   receiving payments (payments, their status, balance)
+//   /api/v1/send/{moncash|natcash}/...      sending money (transfers, their status, balance)
+// Each only exposes its own operations; the other one's paths don't exist there.
+// The original /api/v1/{moncash|natcash}/... paths keep working for existing integrations.
 const network = Router({ mergeParams: true });
 
 network.use((req, _res, next) => {
   const resolved = NETWORKS[req.params.network];
   if (!resolved) return next(new AppError("NOT_FOUND", "Unknown provider."));
   req.ctx.network = req.params.network;
+  // Not this API's business: behave as if the path didn't exist.
+  const s = req.ctx.service;
+  if ((s === "receive" && req.path.startsWith("/transfers")) || (s === "send" && req.path.startsWith("/payments"))) {
+    return next(new AppError("NOT_FOUND", "Endpoint not found."));
+  }
   next();
 });
 network.use(requireApiKey);
+
+// In a service API, transaction lookups are limited to that service's kind of operation.
+const kindOf = (req: { ctx: { service?: "receive" | "send" } }): "PAYMENT" | "TRANSFER" | undefined =>
+  req.ctx.service === "receive" ? "PAYMENT" : req.ctx.service === "send" ? "TRANSFER" : undefined;
 
 network.post(
   "/payments",
@@ -97,6 +110,28 @@ network.post(
     );
     if (replayed) res.setHeader("Idempotent-Replayed", "true");
     res.status(replayed ? 200 : 201).json(payments.serializeTransaction(transaction));
+  })
+);
+
+network.get(
+  "/payments/:id",
+  requirePermission("payments:read"),
+  asyncHandler(async (req, res) => {
+    const t = await payments.getTransaction(req.apiAuth!.clientId, req.apiAuth!.environment, req.params.id, NETWORKS[req.params.network], { refresh: true });
+    if (t.type !== "PAYMENT") throw new AppError("TRANSACTION_NOT_FOUND", "Transaction not found.");
+    res.json(payments.serializeTransaction(t));
+  })
+);
+
+network.get(
+  "/payments",
+  requirePermission("payments:read"),
+  asyncHandler(async (req, res) => {
+    const q = listQuerySchema.parse(req.query);
+    const rows = await payments.listTransactions(req.apiAuth!.clientId, req.apiAuth!.environment, {
+      network: NETWORKS[req.params.network], type: "PAYMENT", status: q.status?.toUpperCase() as never, limit: q.limit, before: q.before ? new Date(q.before) : undefined,
+    });
+    res.json({ success: true, payments: rows.map(payments.serializeTransaction), has_more: rows.length === q.limit });
   })
 );
 
@@ -145,6 +180,7 @@ network.get(
   requirePermission("transactions:read"),
   asyncHandler(async (req, res) => {
     const t = await payments.getTransaction(req.apiAuth!.clientId, req.apiAuth!.environment, req.params.id, NETWORKS[req.params.network], { refresh: true });
+    if (kindOf(req) && t.type !== kindOf(req)) throw new AppError("TRANSACTION_NOT_FOUND", "Transaction not found.");
     res.json(payments.serializeTransaction(t));
   })
 );
@@ -165,7 +201,7 @@ network.get(
     const q = listQuerySchema.parse(req.query);
     const rows = await payments.listTransactions(req.apiAuth!.clientId, req.apiAuth!.environment, {
       network: NETWORKS[req.params.network],
-      type: typeof req.query.type === "string" && ["payment", "transfer"].includes(req.query.type) ? (req.query.type.toUpperCase() as "PAYMENT" | "TRANSFER") : undefined,
+      type: kindOf(req) ?? (typeof req.query.type === "string" && ["payment", "transfer"].includes(req.query.type) ? (req.query.type.toUpperCase() as "PAYMENT" | "TRANSFER") : undefined),
       status: q.status?.toUpperCase() as never,
       limit: q.limit,
       before: q.before ? new Date(q.before) : undefined,
@@ -174,6 +210,12 @@ network.get(
   })
 );
 
+const inService = (service: "receive" | "send"): import("express").RequestHandler => (req, _res, next) => {
+  req.ctx.service = service;
+  next();
+};
+apiV1Router.use("/receive/:network(moncash|natcash)", inService("receive"), network);
+apiV1Router.use("/send/:network(moncash|natcash)", inService("send"), network);
 apiV1Router.use("/:network(moncash|natcash)", network);
 
 apiV1Router.use((_req, _res, next) => next(new AppError("NOT_FOUND", "Endpoint not found.")));

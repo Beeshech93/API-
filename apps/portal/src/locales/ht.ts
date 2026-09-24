@@ -45,10 +45,6 @@ const ht: Record<MessageKey, string> = {
 
 
 
-
-
-
-
   "settings.profile": "Pwofil", "settings.language": "Lang",
   "support.subtitle": "Nou la pou ede w entegre.", "support.tip": "Mete request_id apèl ki echwe a: sa pèmèt nou swiv li soti nan komansman rive nan fen.",
   "support.email": "Imèl", "support.noEmail": "Nou pral pibliye kontak sipò a isit la.",
@@ -106,11 +102,9 @@ const ht: Record<MessageKey, string> = {
   "doc.auth.title": "Otantifikasyon",
   "doc.auth.body": "Voye kle API ou kòm token Bearer nan header Authorization. Ou kreye kle yo nan tablo bò a, yo montre yo nèt yon sèl fwa, epi ou dwe itilize yo sèlman depi sèvè ou — pa janm depi yon navigatè oswa yon aplikasyon mobil.",
   "doc.keys.title": "Kle API",
-  "doc.keys.body": "Kle hp_test_… yo itilize sandbox la epi yo pa janm deplase vrè lajan. Kle hp_live_… mande pou aksè LIVE aktive sou kont ou. Chak kle gen pèmisyon (mwens privilèj posib): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Ou ka revoke oswa rejenere yon kle nenpòt ki lè. Yon kont konfigire pou resevwa peman, voye lajan, oswa tou de, epi kle li yo ka pote sèlman pèmisyon ki koresponn yo.",
-  "doc.moncash.title": "MonCash",
-  "doc.moncash.body": "Itilize /api/v1/moncash pou peman, tranzaksyon ak balans MonCash.",
-  "doc.natcash.title": "NatCash",
-  "doc.natcash.body": "Itilize /api/v1/natcash — menm operasyon ak menm fòma ak MonCash.",
+  "doc.keys.body": "Kle hp_test_… yo itilize sandbox la epi yo pa janm deplase vrè lajan. Kle hp_live_… mande pou aksè LIVE aktive sou kont ou. Chak kle gen pèmisyon (mwens privilèj posib): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Ou ka revoke oswa rejenere yon kle nenpòt ki lè. Yon kont konfigire pou resevwa peman, voye lajan, oswa tou de, epi kle li yo ka pote sèlman pèmisyon ki koresponn yo. Kle yo pou chak API: youn pou resevwa peman, yon lòt pou voye lajan.",
+
+
   "doc.payments.title": "Peman",
   "doc.payments.body": "Kreye yon peman pou yon kliyan. Ak yon kle TÈS li rete an tann jiskaske ou simile l. Ak yon kle LIVE, repons lan gen payment_url: voye kliyan an peye nan adrès sa a, epi tann webhook payment.completed la (oswa li tranzaksyon an) — pa janm livre yon kòmand jis paske kliyan an retounen. success_url ak error_url (opsyonèl) endike kote kliyan an retounen. Header Idempotency-Key obligatwa: si w repete yon demann ak menm kle a, ou jwenn tranzaksyon orijinal la epi li pa janm kreye yon dezyèm peman.",
   "doc.transfers.title": "Transfè",
@@ -184,7 +178,6 @@ const ht: Record<MessageKey, string> = {
   "admin.limitsSubtitle": "Aplike pou tout kliyan. Pa gen plan ni kota mansyèl.",
   "admin.maxLiveKeys": "Maks kle LIVE aktif pa kliyan",
   "admin.requireApproval": "Mande apwobasyon yon administratè anvan yon kliyan ka itilize LIVE (rekòmande)",
-
   "nav.funding": "Rechaje",
   "admin.funding": "Rechaj",
   "common.cancel": "Anile",
@@ -240,7 +233,6 @@ const ht: Record<MessageKey, string> = {
   "admin.fund.min": "Minimòm (HTG)",
   "admin.fund.instr": "Enstriksyon kliyan yo wè",
   "admin.pendingFunding": "Rechaj an tann",
-
   "auth.services": "Kisa w pral itilize HaitiPay pou li?",
   "auth.services.receive": "Resevwa peman",
   "auth.services.receive.hint": "Kolekte lajan kliyan ou yo atravè MonCash.",
@@ -254,6 +246,15 @@ const ht: Record<MessageKey, string> = {
   "admin.cfg.role.send.sub": "Kont founisè a yo itilize pou voye lajan. Kite l vid pou itilize kont resevwa peman an pou tou de.",
   "admin.cfg.sendInherits": "Pa gen idantifyan separe ki anrejistre: voye lajan itilize kont resevwa peman an.",
   "admin.cfg.sendMissing": "Voye lajan poko konfigire. Anrejistre idantifyan li isit la oswa konfigire kont resevwa peman an.",
+  "keys.api": "API",
+  "keys.api.receive": "Resevwa peman",
+  "keys.api.send": "Voye lajan",
+  "keys.api.legacy": "Tou de (ansyen kle)",
+  "keys.apiHint": "Yon kle fè pati yon sèl API. Kreye yon kle pou resevwa peman ak yon lòt pou voye lajan: yon kle ki fuit ka fè youn sèlman nan de yo.",
+  "doc.receive.title": "API resepsyon",
+  "doc.receive.body": "Tout sa ki sèvi pou kolekte lajan kliyan ou yo anba /api/v1/receive/{moncash|natcash}. Li gen sèlman peman — kreye yo, li yo epi lis yo — ansanm ak tranzaksyon yo ak balans lan. Li mande yon kle ki kreye pou API sa a (pèmisyon payments:*). Chemen orijinal /api/v1/{network}/… yo kontinye mache pou entegrasyon ki deja egziste yo.",
+  "doc.send.title": "API voye lajan",
+  "doc.send.body": "Tout sa ki sèvi pou peye lajan anba /api/v1/send/{moncash|natcash}. Li gen sèlman transfè — kreye yo, li yo epi lis yo — ansanm ak tranzaksyon yo ak balans lan. Li mande yon kle ki kreye pou API sa a (pèmisyon transfers:*). Peman yo pran nan balans disponib ou.",
 };
 
 export default ht;

@@ -6,30 +6,42 @@ import { API_URL } from "@/lib/apiClient";
 import { useT } from "@/lib/i18n";
 import { SANDBOX_NUMBERS, samples } from "./samples";
 
-const SECTIONS = ["intro", "auth", "keys", "moncash", "natcash", "payments", "transfers", "transactions", "balance", "quote", "webhooks", "errors", "limits", "sandbox", "live"] as const;
+const SECTIONS = ["intro", "auth", "keys", "receive", "payments", "send", "transfers", "transactions", "balance", "quote", "webhooks", "errors", "limits", "sandbox", "live"] as const;
 const LANGS = ["curl", "javascript", "node", "php", "python"] as const;
 const LANG_LABEL: Record<(typeof LANGS)[number], string> = { curl: "cURL", javascript: "JavaScript", node: "Node.js", php: "PHP", python: "Python" };
 
-const ENDPOINTS = [
+// Two separate APIs, each with its own paths and its own kind of key.
+const RECEIVE_ENDPOINTS = [
+  ["POST", "/api/v1/receive/{moncash|natcash}/payments", "payments:create"],
+  ["GET", "/api/v1/receive/{network}/payments/{transaction_id}", "payments:read"],
+  ["GET", "/api/v1/receive/{network}/payments", "payments:read"],
+  ["GET", "/api/v1/receive/{network}/transactions", "transactions:read"],
+  ["GET", "/api/v1/receive/{network}/balance", "balance:read"],
+];
+const SEND_ENDPOINTS = [
+  ["POST", "/api/v1/send/{moncash|natcash}/transfers", "transfers:create"],
+  ["GET", "/api/v1/send/{network}/transfers/{transaction_id}", "transfers:read"],
+  ["GET", "/api/v1/send/{network}/transfers", "transfers:read"],
+  ["GET", "/api/v1/send/{network}/transactions", "transactions:read"],
+  ["GET", "/api/v1/send/{network}/balance", "balance:read"],
+];
+const COMMON_ENDPOINTS = [
   ["GET", "/api/v1/health", "—"],
-  ["GET", "/api/v1/quote?amount=1000&currency=HTG&provider=moncash", "payments:read"],
-  ["POST", "/api/v1/moncash/payments", "payments:create"],
-  ["GET", "/api/v1/moncash/transactions/{transaction_id}", "transactions:read"],
-  ["GET", "/api/v1/moncash/transactions", "transactions:read"],
-  ["GET", "/api/v1/moncash/balance", "balance:read"],
-  ["POST", "/api/v1/moncash/transfers", "transfers:create"],
-  ["GET", "/api/v1/moncash/transfers/{transaction_id}", "transfers:read"],
-  ["GET", "/api/v1/moncash/transfers", "transfers:read"],
-  ["POST", "/api/v1/natcash/payments", "payments:create"],
-  ["POST", "/api/v1/natcash/transfers", "transfers:create"],
-  ["GET", "/api/v1/natcash/transfers/{transaction_id}", "transfers:read"],
-  ["GET", "/api/v1/natcash/transfers", "transfers:read"],
-  ["GET", "/api/v1/natcash/transactions/{transaction_id}", "transactions:read"],
-  ["GET", "/api/v1/natcash/transactions", "transactions:read"],
-  ["GET", "/api/v1/natcash/balance", "balance:read"],
+  ["GET", "/api/v1/quote?amount=1000&currency=HTG&provider=moncash", "payments:read | transfers:read"],
   ["POST", "/api/v1/sandbox/transactions/{transaction_id}/simulate", "payments:create | transfers:create (TEST)"],
   ["POST", "/api/v1/sandbox/fund", "transfers:create (TEST)"],
 ];
+
+function EndpointTable({ rows, permLabel, endpointLabel }: { rows: string[][]; permLabel: string; endpointLabel: string }) {
+  return (
+    <div className="overflow-x-auto mt-3">
+      <table className="w-full text-sm bg-white border border-slate-200 rounded-xl">
+        <thead><tr className="text-left text-slate-500 border-b bg-slate-50"><th className="p-3">HTTP</th><th className="p-3">{endpointLabel}</th><th className="p-3">{permLabel}</th></tr></thead>
+        <tbody>{rows.map(([m, p, perm]) => (<tr key={m + p} className="border-b border-slate-100"><td className="p-3 font-mono text-xs">{m}</td><td className="p-3 font-mono text-xs break-all">{p}</td><td className="p-3 text-xs text-slate-500">{perm}</td></tr>))}</tbody>
+      </table>
+    </div>
+  );
+}
 
 const ERRORS = [
   ["INVALID_API_KEY", "401"], ["UNAUTHORIZED", "401"], ["FORBIDDEN", "403"], ["INVALID_REQUEST", "400 / 422"], ["INVALID_AMOUNT", "400"], ["INVALID_PHONE", "400"],
@@ -86,12 +98,7 @@ export default function DocsPage() {
               <>
                 <p className="mt-3 text-sm text-slate-500">{t("doc.base")}</p>
                 <Code>{`${API_URL}/api/v1`}</Code>
-                <div className="overflow-x-auto mt-3">
-                  <table className="w-full text-sm bg-white border border-slate-200 rounded-xl">
-                    <thead><tr className="text-left text-slate-500 border-b bg-slate-50"><th className="p-3">HTTP</th><th className="p-3">{t("doc.endpoint")}</th><th className="p-3">{t("doc.perm")}</th></tr></thead>
-                    <tbody>{ENDPOINTS.map(([m, p, perm]) => (<tr key={m + p} className="border-b border-slate-100"><td className="p-3 font-mono text-xs">{m}</td><td className="p-3 font-mono text-xs break-all">{p}</td><td className="p-3 text-xs">{perm}</td></tr>))}</tbody>
-                  </table>
-                </div>
+                <EndpointTable rows={COMMON_ENDPOINTS} permLabel={t("doc.perm")} endpointLabel={t("doc.endpoint")} />
                 <p className="mt-3 text-sm text-slate-500">GET /api/v1/health</p>
                 <Code>{`{ "status": "ok", "service": "HaitiPay API", "version": "1.0.0" }`}</Code>
               </>
@@ -99,12 +106,15 @@ export default function DocsPage() {
 
             {id === "auth" && <LangTabs group="auth" />}
             {id === "keys" && <Code>{`hp_live_xxxxxxxxxxxxxxxxxxxx   # LIVE   (needs LIVE access enabled for your account)\nhp_test_xxxxxxxxxxxxxxxxxxxx   # TEST   (sandbox, never moves real money)\n\n# After creation only the masked key is shown:\nhp_live_••••••••••••91KD`}</Code>}
-            {(id === "moncash" || id === "natcash") && <LangTabs group={id === "moncash" ? "moncash" : "natcash"} />}
+            {id === "receive" && <EndpointTable rows={RECEIVE_ENDPOINTS} permLabel={t("doc.perm")} endpointLabel={t("doc.endpoint")} />}
+            {id === "send" && <EndpointTable rows={SEND_ENDPOINTS} permLabel={t("doc.perm")} endpointLabel={t("doc.endpoint")} />}
             {id === "payments" && (
               <>
                 <LangTabs group="payment" />
                 <p className="text-sm text-slate-500">{t("doc.response")} — 201</p>
                 <Code>{s.paymentResponse}</Code>
+                <p className="text-sm text-slate-500 mt-3">GET /api/v1/receive/{"{network}"}/payments/{"{transaction_id}"}</p>
+                <LangTabs group="transaction" />
               </>
             )}
             {id === "transfers" && (
@@ -112,10 +122,12 @@ export default function DocsPage() {
                 <LangTabs group="transfer" />
                 <p className="text-sm text-slate-500">{t("doc.response")} — 201</p>
                 <Code>{s.transferResponse}</Code>
+                <p className="text-sm text-slate-500 mt-3">GET /api/v1/send/{"{network}"}/transfers/{"{transaction_id}"}</p>
+                <LangTabs group="transferStatus" />
               </>
             )}
-            {id === "transactions" && <><LangTabs group="transaction" /><Code>{`GET /api/v1/moncash/transactions?limit=25&status=completed`}</Code></>}
-            {id === "balance" && <><LangTabs group="balance" /><Code>{s.balanceResponse}</Code></>}
+            {id === "transactions" && <><Code>{`GET /api/v1/receive/moncash/transactions?limit=25&status=completed\nGET /api/v1/send/moncash/transactions?limit=25&status=completed`}</Code></>}
+            {id === "balance" && <><LangTabs group="balance" /><p className="text-sm text-slate-500 mt-3">GET /api/v1/send/moncash/balance</p><Code>{s.balanceResponse}</Code></>}
             {id === "quote" && <><LangTabs group="quote" /><Code>{`{ "amount": 1000, "fee": 10, "total": 1010, "currency": "HTG" }`}</Code></>}
             {id === "webhooks" && (
               <>

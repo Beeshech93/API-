@@ -4,7 +4,7 @@ import Link from "next/link";
 import { API_URL } from "@/lib/apiClient";
 import { useT } from "@/lib/i18n";
 
-const SNIPPET = `curl -X POST ${API_URL}/api/v1/moncash/payments \\
+const SNIPPET = `curl -X POST ${API_URL}/api/v1/receive/moncash/payments \\
   -H "Authorization: Bearer hp_test_xxxxxxxx" \\
   -H "Idempotency-Key: order-12345" \\
   -H "Content-Type: application/json" \\

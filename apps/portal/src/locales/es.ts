@@ -45,10 +45,6 @@ const es: Record<MessageKey, string> = {
 
 
 
-
-
-
-
   "settings.profile": "Perfil", "settings.language": "Idioma",
   "support.subtitle": "Estamos aquí para ayudarte a integrar.", "support.tip": "Incluye el request_id de la llamada que falla: nos permite rastrearla de extremo a extremo.",
   "support.email": "Correo", "support.noEmail": "Los datos de contacto de soporte se publicarán aquí.",
@@ -106,11 +102,9 @@ const es: Record<MessageKey, string> = {
   "doc.auth.title": "Autenticación",
   "doc.auth.body": "Envía tu clave API como token Bearer en el encabezado Authorization. Las claves se crean en el panel, se muestran completas una sola vez y solo deben usarse desde tu servidor, nunca desde un navegador o app móvil.",
   "doc.keys.title": "Claves API",
-  "doc.keys.body": "Las claves hp_test_… usan el sandbox y nunca mueven dinero real. Las claves hp_live_… requieren que el acceso LIVE esté activado en tu cuenta. Cada clave tiene permisos (mínimo privilegio): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Puedes revocar o regenerar una clave en cualquier momento. Una cuenta se configura para recibir pagos, enviar dinero o ambos, y sus claves solo pueden llevar los permisos que corresponden.",
-  "doc.moncash.title": "MonCash",
-  "doc.moncash.body": "Usa /api/v1/moncash para pagos, transacciones y saldo de MonCash.",
-  "doc.natcash.title": "NatCash",
-  "doc.natcash.body": "Usa /api/v1/natcash: las mismas operaciones y formato que MonCash.",
+  "doc.keys.body": "Las claves hp_test_… usan el sandbox y nunca mueven dinero real. Las claves hp_live_… requieren que el acceso LIVE esté activado en tu cuenta. Cada clave tiene permisos (mínimo privilegio): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Puedes revocar o regenerar una clave en cualquier momento. Una cuenta se configura para recibir pagos, enviar dinero o ambos, y sus claves solo pueden llevar los permisos que corresponden. Las claves son por API: una para recibir pagos y otra para enviar dinero.",
+
+
   "doc.payments.title": "Pagos",
   "doc.payments.body": "Crea un pago para un cliente. Con una clave de PRUEBA queda pendiente hasta que lo simules. Con una clave LIVE la respuesta incluye payment_url: envía al cliente a esa dirección para pagar y espera el webhook payment.completed (o consulta la transacción); nunca entregues un pedido solo porque el cliente volvió. success_url y error_url (opcionales) indican adónde vuelve el cliente. El encabezado Idempotency-Key es obligatorio: repetir una solicitud con la misma clave devuelve la transacción original y nunca crea un segundo pago.",
   "doc.transfers.title": "Transferencias",
@@ -184,7 +178,6 @@ const es: Record<MessageKey, string> = {
   "admin.limitsSubtitle": "Se aplican a todos los clientes. No hay planes ni cuota mensual.",
   "admin.maxLiveKeys": "Máx. de claves LIVE activas por cliente",
   "admin.requireApproval": "Exigir aprobación de un administrador antes de que un cliente use LIVE (recomendado)",
-
   "nav.funding": "Recargar",
   "admin.funding": "Recargas",
   "common.cancel": "Cancelar",
@@ -240,7 +233,6 @@ const es: Record<MessageKey, string> = {
   "admin.fund.min": "Mínimo (HTG)",
   "admin.fund.instr": "Instrucciones que ven los clientes",
   "admin.pendingFunding": "Recargas pendientes",
-
   "auth.services": "¿Para qué usarás HaitiPay?",
   "auth.services.receive": "Recibir pagos",
   "auth.services.receive.hint": "Cobra a tus clientes mediante MonCash.",
@@ -254,6 +246,15 @@ const es: Record<MessageKey, string> = {
   "admin.cfg.role.send.sub": "La cuenta del proveedor que se usa para enviar dinero. Déjala vacía para usar la de recibir pagos en ambos casos.",
   "admin.cfg.sendInherits": "No hay credenciales separadas guardadas: el envío de dinero usa la cuenta de recibir pagos.",
   "admin.cfg.sendMissing": "El envío de dinero aún no está configurado. Guarda sus credenciales aquí o configura la cuenta de recibir pagos.",
+  "keys.api": "API",
+  "keys.api.receive": "Recibir pagos",
+  "keys.api.send": "Enviar dinero",
+  "keys.api.legacy": "Ambas (clave anterior)",
+  "keys.apiHint": "Una clave pertenece a una sola API. Crea una clave para recibir pagos y otra para enviar dinero: una clave filtrada solo puede hacer una de las dos cosas.",
+  "doc.receive.title": "API de recepción",
+  "doc.receive.body": "Todo lo necesario para cobrar a tus clientes está bajo /api/v1/receive/{moncash|natcash}. Solo contiene pagos — crearlos, leerlos y listarlos — más sus transacciones y el saldo. Requiere una clave creada para esta API (permisos payments:*). Las rutas originales /api/v1/{network}/… siguen funcionando para las integraciones existentes.",
+  "doc.send.title": "API de envío",
+  "doc.send.body": "Todo lo necesario para pagar dinero está bajo /api/v1/send/{moncash|natcash}. Solo contiene transferencias — crearlas, leerlas y listarlas — más sus transacciones y el saldo. Requiere una clave creada para esta API (permisos transfers:*). Los envíos usan tu saldo disponible.",
 };
 
 export default es;

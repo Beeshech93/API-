@@ -43,10 +43,6 @@ const en = {
 
 
 
-
-
-
-
   "settings.profile": "Profile", "settings.language": "Language",
   "support.subtitle": "We're here to help you integrate.", "support.tip": "Include the request_id from the failing call — it lets us trace it end to end.",
   "support.email": "Email", "support.noEmail": "Support contact details will be published here.",
@@ -104,11 +100,9 @@ const en = {
   "doc.auth.title": "Authentication",
   "doc.auth.body": "Send your API key as a Bearer token in the Authorization header. Keys are created in the dashboard, are shown in full only once, and must only ever be used from your server — never from a browser or mobile app.",
   "doc.keys.title": "API Keys",
-  "doc.keys.body": "hp_test_… keys use the sandbox and never move real money. hp_live_… keys need LIVE access enabled for your account. Each key has permissions (least privilege): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. You can revoke or rotate a key at any time. An account is set up to receive payments, send money, or both, and its keys can only carry the permissions that fit.",
-  "doc.moncash.title": "MonCash",
-  "doc.moncash.body": "Use /api/v1/moncash for payments, transactions and balance on MonCash.",
-  "doc.natcash.title": "NatCash",
-  "doc.natcash.body": "Use /api/v1/natcash — the same operations and format as MonCash.",
+  "doc.keys.body": "hp_test_… keys use the sandbox and never move real money. hp_live_… keys need LIVE access enabled for your account. Each key has permissions (least privilege): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. You can revoke or rotate a key at any time. An account is set up to receive payments, send money, or both, and its keys can only carry the permissions that fit. Keys are per API: one for receiving payments, another for sending money.",
+
+
   "doc.payments.title": "Payments",
   "doc.payments.body": "Create a payment for a customer. With a TEST key it stays pending until you simulate it. With a LIVE key the response includes payment_url: send the customer there to pay, then wait for the payment.completed webhook (or read the transaction) — never fulfil an order just because the customer came back. Optional success_url and error_url set where the customer returns. The Idempotency-Key header is required: repeating a request with the same key returns the original transaction and never creates a second payment.",
   "doc.transfers.title": "Transfers",
@@ -182,7 +176,6 @@ const en = {
   "admin.limitsSubtitle": "Applied to every client. There are no plans and no monthly quota.",
   "admin.maxLiveKeys": "Max active LIVE keys per client",
   "admin.requireApproval": "Require administrator approval before a client can use LIVE (recommended)",
-
   "nav.funding": "Add funds",
   "admin.funding": "Funding",
   "common.cancel": "Cancel",
@@ -238,7 +231,6 @@ const en = {
   "admin.fund.min": "Minimum (HTG)",
   "admin.fund.instr": "Instructions shown to clients",
   "admin.pendingFunding": "Pending recharges",
-
   "auth.services": "What will you use HaitiPay for?",
   "auth.services.receive": "Receive payments",
   "auth.services.receive.hint": "Collect money from your customers through MonCash.",
@@ -252,6 +244,15 @@ const en = {
   "admin.cfg.role.send.sub": "The provider account used to send money out. Leave it empty to use the receive-payments account for both.",
   "admin.cfg.sendInherits": "No separate credentials saved: sending money uses the receive-payments account.",
   "admin.cfg.sendMissing": "Sending money is not configured yet. Save its credentials here or set up the receive-payments account.",
+  "keys.api": "API",
+  "keys.api.receive": "Receive payments",
+  "keys.api.send": "Send money",
+  "keys.api.legacy": "Both (older key)",
+  "keys.apiHint": "A key belongs to one API. Create one key to receive payments and another to send money, so a leaked key can only do one of the two.",
+  "doc.receive.title": "Receive API",
+  "doc.receive.body": "Everything for collecting money from your customers lives under /api/v1/receive/{moncash|natcash}. It only has payments — create, read and list them — plus their transactions and balance. It needs a key created for this API (payments:* permissions). The original paths /api/v1/{network}/… keep working for existing integrations.",
+  "doc.send.title": "Send API",
+  "doc.send.body": "Everything for paying money out lives under /api/v1/send/{moncash|natcash}. It only has transfers — create, read and list them — plus their transactions and balance. It needs a key created for this API (transfers:* permissions). Payouts draw on your available balance.",
 } as const;
 
 export type MessageKey = keyof typeof en;

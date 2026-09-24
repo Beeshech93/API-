@@ -49,6 +49,13 @@ const RECEIVE_PERMISSIONS: Permission[] = ["payments:read", "payments:create"];
 const SEND_PERMISSIONS: Permission[] = ["transfers:read", "transfers:create"];
 
 export function assertPermissionsFit(services: { canReceive: boolean; canSend: boolean }, permissions: readonly string[]) {
+  // Receiving and sending are separate APIs with separate keys: a leaked key that can
+  // collect payments must not be able to send money out (and vice versa).
+  const receives = permissions.some((p) => (RECEIVE_PERMISSIONS as string[]).includes(p));
+  const sends = permissions.some((p) => (SEND_PERMISSIONS as string[]).includes(p));
+  if (receives && sends) {
+    throw new AppError("INVALID_REQUEST", "A key is either for the receive-payments API or for the send-money API, not both. Create one key for each.");
+  }
   if (!services.canReceive && permissions.some((p) => (RECEIVE_PERMISSIONS as string[]).includes(p))) {
     throw new AppError("FORBIDDEN", "This account is not set up to receive payments, so it can't use payments permissions.");
   }

@@ -5,7 +5,7 @@ declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
-      ctx: { requestId: string; startedAt: number; network?: string };
+      ctx: { requestId: string; startedAt: number; network?: string; service?: "receive" | "send" };
       apiAuth?: import("@/services/apikey.service").AuthenticatedKey;
       user?: { id: string; clientId: string; role: "USER" | "ADMIN" };
     }
