@@ -7,7 +7,7 @@ import { useErrorMessage, useT } from "@/lib/i18n";
 import { Badge, Button, Card, ErrorNote, PageTitle, Table } from "@/components/ui";
 
 interface Detail {
-  client: { id: string; name: string; status: string; live_enabled: boolean; created_at: string };
+  client: { id: string; name: string; status: string; live_enabled: boolean; services: { receive: boolean; send: boolean }; created_at: string };
   users: { id: string; email: string; role: string }[];
   api_keys: { id: string; name: string; environment: string; last4: string; status: string; last_used_at: string | null }[];
   usage: { period: string; requests: number; transactions: number };
@@ -50,6 +50,22 @@ export default function ClientDetail({ params }: { params: { id: string } }) {
           {d.client.live_enabled
             ? <Button variant="secondary" onClick={() => confirm(t("admin.confirmDisableLive")) && act("live-access", { enabled: false })}>{t("admin.disableLive")}</Button>
             : <Button onClick={() => act("live-access", { enabled: true })}>{t("admin.enableLive")}</Button>}
+        </Card>
+        <Card className="p-5">
+          <h2 className="font-semibold text-navy mb-3">{t("auth.services")}</h2>
+          <div className="flex flex-wrap gap-4 text-sm text-slate-700 mb-3">
+            {(["receive", "send"] as const).map((s) => (
+              <label key={s} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={d.client.services[s]}
+                  disabled={d.client.services[s] && Number(d.client.services.receive) + Number(d.client.services.send) === 1}
+                  onChange={(e) => act("services", { services: (["receive", "send"] as const).filter((x) => (x === s ? e.target.checked : d.client.services[x])) })}
+                />
+                {t(`auth.services.${s}`)}
+              </label>
+            ))}
+          </div>
         </Card>
         <Card className="p-5">
           <h2 className="font-semibold text-navy mb-3">{t("admin.account")}</h2>

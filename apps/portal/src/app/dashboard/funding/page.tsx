@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useErrorMessage, useT } from "@/lib/i18n";
 import { Badge, Button, Card, ErrorNote, PageTitle, Stat, Table, TextInput } from "@/components/ui";
+import { useAccount } from "@/lib/useAccount";
 
 interface Method { method: string; automatic: boolean; min_amount: number; instructions: string }
 interface Funding {
@@ -17,6 +18,7 @@ const fmt = (n: number) => `${new Intl.NumberFormat().format(n)} HTG`;
 export default function FundingPage() {
   const t = useT();
   const errorMessage = useErrorMessage();
+  const account = useAccount();
   const [data, setData] = useState<Data | null>(null);
   const [method, setMethod] = useState<string>("");
   const [amount, setAmount] = useState("");
@@ -69,6 +71,14 @@ export default function FundingPage() {
     }
   }
 
+  if (account && !account.services.send) {
+    return (
+      <div>
+        <PageTitle title={t("fund.title")} />
+        <Card className="p-5 max-w-2xl"><p className="text-sm text-slate-600">{t("fund.receiveOnly")}</p></Card>
+      </div>
+    );
+  }
   if (!data) return <p className="text-slate-500">{error ?? t("common.loading")}</p>;
   const ready = selected && Number(amount) >= selected.min_amount && (selected.automatic || reference.trim().length >= 4);
 

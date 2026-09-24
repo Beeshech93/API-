@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useErrorMessage, useT } from "@/lib/i18n";
-import { BarChart, Card, ErrorNote, PageTitle, Stat, lastNDays } from "@/components/ui";
+import { Badge, BarChart, Card, ErrorNote, PageTitle, Stat, lastNDays } from "@/components/ui";
 
 interface Overview {
   live_access: boolean;
+  services: { receive: boolean; send: boolean };
   requests: { used: number; period: string };
   transactions: { total: number; completed: number; failed: number };
   success_rate: number | null;
@@ -37,6 +38,10 @@ export default function OverviewPage() {
   return (
     <div>
       <PageTitle title={t("nav.dashboard")} subtitle={t("overview.subtitle")} />
+      <div className="flex flex-wrap gap-2 mb-4">
+        {data.services.receive && <Badge value="live" label={t("auth.services.receive")} />}
+        {data.services.send && <Badge value="live" label={t("auth.services.send")} />}
+      </div>
 
       {!data.live_access && (
         <Card className="p-5 mb-6 border-brand/40 bg-brand-100">

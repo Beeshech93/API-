@@ -22,13 +22,20 @@ const actor = (req: import("express").Request) => ({ userId: req.user!.id, ip: c
 
 // ---- Overview ----------------------------------------------------------
 
+// What the account is set up for; the dashboard adapts to it.
+portalRouter.get("/account", asyncHandler(async (req, res) => {
+  const [client, limits] = await Promise.all([prisma.client.findUnique({ where: { id: req.user!.clientId } }), getLimits()]);
+  if (!client) throw new AppError("NOT_FOUND", "Client not found.");
+  res.json({ success: true, name: client.name, services: { receive: client.canReceive, send: client.canSend }, live_access: isLiveAllowed(limits, client) });
+}));
+
 portalRouter.get(
   "/overview",
   asyncHandler(async (req, res) => {
     const clientId = req.user!.clientId;
     const [limits, client, usage, activeKeys, statusGroups] = await Promise.all([
       getLimits(),
-      prisma.client.findUnique({ where: { id: clientId }, select: { liveEnabled: true } }),
+      prisma.client.findUnique({ where: { id: clientId }, select: { liveEnabled: true, canReceive: true, canSend: true } }),
       getUsage(clientId),
       prisma.apiKey.count({ where: { clientId, revokedAt: null } }),
       prisma.transaction.groupBy({ by: ["status"], where: { clientId }, _count: true }),
@@ -59,6 +66,7 @@ portalRouter.get(
     res.json({
       success: true,
       live_access: isLiveAllowed(limits, { liveEnabled: client?.liveEnabled ?? false }),
+      services: { receive: client?.canReceive ?? false, send: client?.canSend ?? false },
       requests: { used: usage.requests, period: usage.period },
       transactions: { total, completed, failed },
       success_rate: finished ? Math.round((completed / finished) * 1000) / 10 : null,
@@ -205,7 +213,7 @@ portalRouter.get("/funding", asyncHandler(async (req, res) => {
 
 portalRouter.post("/funding", ipRateLimit(20, "funding"), asyncHandler(async (req, res) => {
   const body = fundingSchema.parse(req.body);
-  const client = await prisma.client.findUnique({ where: { id: req.user!.clientId }, select: { id: true, liveEnabled: true } });
+  const client = await prisma.client.findUnique({ where: { id: req.user!.clientId }, select: { id: true, liveEnabled: true, canSend: true } });
   if (!client) throw new AppError("NOT_FOUND", "Client not found.");
   const created = await funding.createFunding(client, body, req.ctx.requestId);
   res.status(201).json({ success: true, funding: funding.serializeFunding(created) });

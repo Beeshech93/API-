@@ -1,4 +1,4 @@
-import { createKeySchema, createPaymentSchema, idempotencyKeySchema, signupSchema } from "@/validators/schemas";
+import { adminCreateClientSchema, createKeySchema, createPaymentSchema, idempotencyKeySchema, servicesSchema, signupSchema } from "@/validators/schemas";
 
 describe("request validation", () => {
   it("normalizes Haitian phone numbers", () => {
@@ -22,5 +22,19 @@ describe("request validation", () => {
     expect(() => signupSchema.parse({ email: "a@b.co", password: "short", name: "A" })).toThrow();
     expect(() => createKeySchema.parse({ name: "k", environment: "LIVE", permissions: ["admin:everything"] })).toThrow();
     expect(createKeySchema.parse({ name: "k", environment: "TEST", permissions: ["payments:create"] }).environment).toBe("TEST");
+  });
+});
+
+describe("account services", () => {
+  const base = { email: "a@b.co", password: "Str0ng-Passw0rd!", name: "A" };
+  it("signup requires a choice of at least one service", () => {
+    expect(() => signupSchema.parse(base)).toThrow();
+    expect(() => signupSchema.parse({ ...base, services: [] })).toThrow();
+    expect(() => signupSchema.parse({ ...base, services: ["trade"] })).toThrow();
+    expect(signupSchema.parse({ ...base, services: ["send"] }).services).toEqual(["send"]);
+    expect(servicesSchema.parse(["send", "send", "receive"])).toEqual(["send", "receive"]);
+  });
+  it("an administrator creating an account defaults to both", () => {
+    expect(adminCreateClientSchema.parse(base).services).toEqual(["receive", "send"]);
   });
 });

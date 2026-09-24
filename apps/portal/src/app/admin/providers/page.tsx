@@ -6,13 +6,15 @@ import { useErrorMessage, useT } from "@/lib/i18n";
 import { Badge, Button, Card, ErrorNote, PageTitle, TextInput } from "@/components/ui";
 
 interface Provider { code: string; name: string; status: string; error_rate: number; response_time_ms: number | null; message: string | null }
-interface Config { source: "admin" | "env" | "none"; configured: boolean; name: string; api_url: string; api_key: string | null; secret_key: string | null; webhook_secret: string | null; editable: boolean }
+type Role = "receive" | "send";
+interface Config { role: Role; inherited: boolean; source: "admin" | "env" | "none"; configured: boolean; name: string; api_url: string; api_key: string | null; secret_key: string | null; webhook_secret: string | null; editable: boolean }
 
 const EMPTY = { name: "", apiUrl: "", apiKey: "", secretKey: "", webhookSecret: "" };
 
 export default function ProvidersPage() {
   const t = useT();
   const errorMessage = useErrorMessage();
+  const [role, setRole] = useState<Role>("receive");
   const [providers, setProviders] = useState<Provider[]>([]);
   const [config, setConfig] = useState<Config | null>(null);
   const [form, setForm] = useState(EMPTY);
@@ -22,7 +24,7 @@ export default function ProvidersPage() {
 
   const load = async () => {
     try {
-      const [p, c] = await Promise.all([api<{ providers: Provider[] }>("/admin/providers"), api<{ config: Config }>("/admin/providers/config")]);
+      const [p, c] = await Promise.all([api<{ providers: Provider[] }>("/admin/providers"), api<{ config: Config }>(`/admin/providers/config?role=${role}`)]);
       setProviders(p.providers);
       setConfig(c.config);
       setForm({ ...EMPTY, name: c.config.name === "Payment provider" ? "" : c.config.name, apiUrl: c.config.api_url });
@@ -31,9 +33,11 @@ export default function ProvidersPage() {
     }
   };
   useEffect(() => {
+    setConfig(null);
+    setSaved(false);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [role]);
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -53,7 +57,7 @@ export default function ProvidersPage() {
       // Secrets left blank are omitted, so the stored values are kept.
       const body: Record<string, string> = { apiUrl: form.apiUrl, name: form.name };
       for (const f of ["apiKey", "secretKey", "webhookSecret"] as const) if (form[f].trim()) body[f] = form[f];
-      await api("/admin/providers/config", { method: "PUT", body });
+      await api(`/admin/providers/config?role=${role}`, { method: "PUT", body });
       setSaved(true);
       setTimeout(() => setSaved(false), 1800);
     });
@@ -80,8 +84,18 @@ export default function ProvidersPage() {
 
       {config && (
         <Card className="p-5 mb-6 max-w-2xl">
-          <h2 className="font-semibold text-navy">{t("admin.cfg.title")}</h2>
-          <p className="text-sm text-slate-600 mt-1 mb-4">{t("admin.cfg.subtitle")}</p>
+          <div role="tablist" className="flex gap-2 mb-4">
+            {(["receive", "send"] as const).map((r) => (
+              <button key={r} role="tab" aria-selected={role === r} type="button" onClick={() => setRole(r)} className={`px-4 py-2 rounded-full border text-sm font-medium ${role === r ? "bg-brand text-white border-brand" : "border-slate-300 text-slate-600 hover:border-brand"}`}>
+                {t(`admin.cfg.role.${r}`)}
+              </button>
+            ))}
+          </div>
+          <h2 className="font-semibold text-navy">{t(`admin.cfg.role.${role}`)}</h2>
+          <p className="text-sm text-slate-600 mt-1 mb-2">{t(`admin.cfg.role.${role}.sub`)}</p>
+          <p className="text-sm text-slate-600 mb-4">{t("admin.cfg.subtitle")}</p>
+          {role === "send" && config.inherited && <p className="text-sm rounded-lg bg-brand-50 text-brand-600 px-3 py-2 mb-4">{t("admin.cfg.sendInherits")}</p>}
+          {role === "send" && !config.configured && <p className="text-sm rounded-lg bg-amber-50 text-amber-700 px-3 py-2 mb-4">{t("admin.cfg.sendMissing")}</p>}
           <form autoComplete="off" onSubmit={(e) => { e.preventDefault(); save(); }} className="space-y-3">
             <TextInput label={t("admin.cfg.name")} value={form.name} onChange={(e) => set({ name: e.target.value })} maxLength={60} autoComplete="off" />
             <TextInput label={t("admin.cfg.apiUrl")} type="url" value={form.apiUrl} onChange={(e) => set({ apiUrl: e.target.value })} placeholder="https://" autoComplete="off" />
@@ -90,7 +104,7 @@ export default function ProvidersPage() {
             <TextInput label={t("admin.cfg.webhookSecret")} type="password" value={form.webhookSecret} onChange={(e) => set({ webhookSecret: e.target.value })} placeholder={secretPlaceholder(config.webhook_secret)} autoComplete="new-password" />
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Button type="submit" disabled={busy || !form.apiUrl.trim()}>{t("admin.cfg.save")}</Button>
-              {config.source === "admin" && <Button variant="danger" disabled={busy} onClick={() => confirm(t("admin.cfg.confirmClear")) && run(() => api("/admin/providers/config", { method: "DELETE" }))}>{t("admin.cfg.clear")}</Button>}
+              {config.source === "admin" && <Button variant="danger" disabled={busy} onClick={() => confirm(t("admin.cfg.confirmClear")) && run(() => api(`/admin/providers/config?role=${role}`, { method: "DELETE" }))}>{t("admin.cfg.clear")}</Button>}
               {saved && <Badge value="active" label={t("common.saved")} />}
             </div>
           </form>

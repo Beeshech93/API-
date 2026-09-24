@@ -47,18 +47,18 @@ async function issueSession(
   return { accessToken, refreshToken, refreshExpiresAt, refreshTokenId: record.id, user };
 }
 
-export async function signup(input: { email: string; password: string; name: string }, meta: SessionMeta): Promise<Session> {
+export async function signup(input: { email: string; password: string; name: string; services: ("receive" | "send")[] }, meta: SessionMeta): Promise<Session> {
   const email = input.email.toLowerCase();
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) throw new AppError("CONFLICT", "An account with that email already exists.");
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
   const user = await prisma.$transaction(async (tx) => {
-    const client = await tx.client.create({ data: { name: input.name } });
+    const client = await tx.client.create({ data: { name: input.name, canReceive: input.services.includes("receive"), canSend: input.services.includes("send") } });
     return tx.user.create({ data: { clientId: client.id, email, passwordHash, name: input.name } });
   });
 
-  await audit({ action: "auth.signup", actorUserId: user.id, clientId: user.clientId, ip: meta.ip });
+  await audit({ action: "auth.signup", actorUserId: user.id, clientId: user.clientId, ip: meta.ip, metadata: { services: input.services } });
   return issueSession({ id: user.id, email: user.email, name: user.name, role: user.role, clientId: user.clientId }, meta);
 }
 

@@ -106,7 +106,7 @@ const ht: Record<MessageKey, string> = {
   "doc.auth.title": "Otantifikasyon",
   "doc.auth.body": "Voye kle API ou kòm token Bearer nan header Authorization. Ou kreye kle yo nan tablo bò a, yo montre yo nèt yon sèl fwa, epi ou dwe itilize yo sèlman depi sèvè ou — pa janm depi yon navigatè oswa yon aplikasyon mobil.",
   "doc.keys.title": "Kle API",
-  "doc.keys.body": "Kle hp_test_… yo itilize sandbox la epi yo pa janm deplase vrè lajan. Kle hp_live_… mande pou aksè LIVE aktive sou kont ou. Chak kle gen pèmisyon (mwens privilèj posib): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Ou ka revoke oswa rejenere yon kle nenpòt ki lè.",
+  "doc.keys.body": "Kle hp_test_… yo itilize sandbox la epi yo pa janm deplase vrè lajan. Kle hp_live_… mande pou aksè LIVE aktive sou kont ou. Chak kle gen pèmisyon (mwens privilèj posib): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Ou ka revoke oswa rejenere yon kle nenpòt ki lè. Yon kont konfigire pou resevwa peman, voye lajan, oswa tou de, epi kle li yo ka pote sèlman pèmisyon ki koresponn yo.",
   "doc.moncash.title": "MonCash",
   "doc.moncash.body": "Itilize /api/v1/moncash pou peman, tranzaksyon ak balans MonCash.",
   "doc.natcash.title": "NatCash",
@@ -126,7 +126,7 @@ const ht: Record<MessageKey, string> = {
   "doc.limits.title": "Limit itilizasyon",
   "doc.limits.body": "Limit yo aplike pa kliyan, kle API, endpoint ak IP. Lè w depase yo: HTTP 429, yon header Retry-After ak error.retry_after (segonn). Pa gen kota mansyèl demann.",
   "doc.sandbox.title": "Anviwònman tès",
-  "doc.sandbox.body": "Kle TÈS yo mache kont yon founisè simile: pa janm vrè lajan. Itilize nimewo telefòn sa yo pou deklanche chak rezilta, oswa rele endpoint simulasyon an pou fini yon peman oswa yon transfè an tann epi deklanche webhook la. Pou eseye transfè, fè yon peman tès fini anvan (nimewo ki fini ak 0001) pou ba sandbox ou lajan.",
+  "doc.sandbox.body": "Kle TÈS yo mache kont yon founisè simile: pa janm vrè lajan. Itilize nimewo telefòn sa yo pou deklanche chak rezilta, oswa rele endpoint simulasyon an pou fini yon peman oswa yon transfè an tann epi deklanche webhook la. Pou eseye transfè, fè yon peman tès fini anvan (nimewo ki fini ak 0001) pou ba sandbox ou lajan. Kont ki sèlman voye lajan ka ajoute lajan simile ak POST /api/v1/sandbox/fund (kle TÈS) pou eseye transfè.",
   "doc.quote.title": "Devi ak frè",
   "doc.quote.body": "Mande frè ak total egzat la anvan ou fè peman an. Menm frè a anrejistre sou tranzaksyon an lè w kreye peman an.",
   "doc.base": "URL de baz",
@@ -240,6 +240,20 @@ const ht: Record<MessageKey, string> = {
   "admin.fund.min": "Minimòm (HTG)",
   "admin.fund.instr": "Enstriksyon kliyan yo wè",
   "admin.pendingFunding": "Rechaj an tann",
+
+  "auth.services": "Kisa w pral itilize HaitiPay pou li?",
+  "auth.services.receive": "Resevwa peman",
+  "auth.services.receive.hint": "Kolekte lajan kliyan ou yo atravè MonCash.",
+  "auth.services.send": "Voye lajan",
+  "auth.services.send.hint": "Peye sou pòtfèy MonCash ak NatCash (peman, salè, ranbousman).",
+  "auth.servicesHint": "Chwazi omwen youn. Ou ka chwazi tou de.",
+  "fund.receiveOnly": "Kont ou konfigire pou resevwa peman sèlman, kidonk pa gen anyen pou rechaje. Pou w voye lajan tou, kontakte sipò a pou ajoute l sou kont ou.",
+  "admin.cfg.role.receive": "Resevwa peman",
+  "admin.cfg.role.receive.sub": "Kont founisè a yo itilize pou kolekte peman ak rechaj balans.",
+  "admin.cfg.role.send": "Voye lajan",
+  "admin.cfg.role.send.sub": "Kont founisè a yo itilize pou voye lajan. Kite l vid pou itilize kont resevwa peman an pou tou de.",
+  "admin.cfg.sendInherits": "Pa gen idantifyan separe ki anrejistre: voye lajan itilize kont resevwa peman an.",
+  "admin.cfg.sendMissing": "Voye lajan poko konfigire. Anrejistre idantifyan li isit la oswa konfigire kont resevwa peman an.",
 };
 
 export default ht;

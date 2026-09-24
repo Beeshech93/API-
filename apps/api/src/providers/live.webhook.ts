@@ -19,9 +19,11 @@ export interface WebhookVerification {
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-export function verifyProviderWebhook(headers: IncomingHttpHeaders, rawBody: string, secret: string, nowMs = Date.now()): WebhookVerification {
+// `secret` may be several: payments and transfers can be signed by different accounts.
+export function verifyProviderWebhook(headers: IncomingHttpHeaders, rawBody: string, secret: string | string[], nowMs = Date.now()): WebhookVerification {
+  const secrets = (Array.isArray(secret) ? secret : [secret]).filter(Boolean);
   // Fail closed when no secret is configured.
-  if (!secret || !rawBody) return { ok: false };
+  if (!secrets.length || !rawBody) return { ok: false };
 
   const signatureKey = Object.keys(headers).find((k) => SIGNATURE_HEADER.test(k));
   if (!signatureKey) return { ok: false };
@@ -36,7 +38,7 @@ export function verifyProviderWebhook(headers: IncomingHttpHeaders, rawBody: str
   if (ts > 1e12) ts = Math.floor(ts / 1000); // milliseconds
   if (Math.abs(nowMs / 1000 - ts) > TOLERANCE_SECONDS) return { ok: false };
 
-  const expected = signHmac(secret, `${timestamp}.${eventId}.${rawBody}`);
   const given = signature.trim().replace(/^v1=/, "");
-  return safeEqual(expected, given) ? { ok: true, eventId } : { ok: false };
+  const verified = secrets.some((s) => safeEqual(signHmac(s, `${timestamp}.${eventId}.${rawBody}`), given));
+  return verified ? { ok: true, eventId } : { ok: false };
 }

@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { env } from "@/config/env";
-import { EffectiveConfig, getEffectiveConfig } from "@/services/providerConfig.service";
+import { CredentialRole, EffectiveConfig, getEffectiveConfig } from "@/services/providerConfig.service";
 import { logProviderCall } from "@/services/providerLog.service";
 import { AppError } from "@/utils/errors";
 import {
@@ -131,9 +131,12 @@ function describe(res: HttpResult): string {
   return `HTTP ${res.status}${msg ? ` ${msg}` : ""}${extra && extra !== msg ? ` — ${extra}` : ""}`;
 }
 
-async function requireConfig(): Promise<EffectiveConfig> {
-  const cfg = await getEffectiveConfig();
-  if (!cfg.configured) throw new AppError("PROVIDER_ERROR", "Live payment processing is not configured on this platform yet.");
+// Receiving payments and sending money can use different provider accounts.
+async function requireConfig(role: CredentialRole): Promise<EffectiveConfig> {
+  const cfg = await getEffectiveConfig(role);
+  if (!cfg.configured) {
+    throw new AppError("PROVIDER_ERROR", role === "send" ? "Sending money is not configured on this platform yet." : "Receiving payments is not configured on this platform yet.");
+  }
   return cfg;
 }
 
@@ -201,7 +204,7 @@ function webhookUrl(): string | undefined {
 
 export class LiveProvider implements PaymentProviderClient {
   async validate(type: ProviderOperation, input: ProviderPrecheckInput): Promise<void> {
-    await requireConfig();
+    await requireConfig(type === "PAYMENT" ? "receive" : "send");
     if (input.currency !== "HTG") throw new AppError("INVALID_REQUEST", "LIVE transactions support HTG only.");
     if (type === "PAYMENT") {
       if (input.network !== "MONCASH") throw new AppError("INVALID_REQUEST", "Receiving payments is not available on this network yet.");
@@ -217,7 +220,7 @@ export class LiveProvider implements PaymentProviderClient {
   }
 
   async createPayment(input: CreateProviderPaymentInput): Promise<ProviderPayment> {
-    const cfg = await requireConfig();
+    const cfg = await requireConfig("receive");
     if (input.network !== "MONCASH") throw new AppError("INVALID_REQUEST", "Receiving payments is not available on this network yet.");
     const started = Date.now();
     const hook = webhookUrl();
@@ -242,7 +245,7 @@ export class LiveProvider implements PaymentProviderClient {
   }
 
   async createTransfer(input: CreateProviderPaymentInput): Promise<ProviderPayment> {
-    const cfg = await requireConfig();
+    const cfg = await requireConfig("send");
     if (!input.recipient) throw new AppError("INVALID_REQUEST", "recipient.first_name and recipient.last_name are required for LIVE transfers.");
     const started = Date.now();
     const network = input.network === "NATCASH" ? "natcash" : "moncash";
@@ -280,7 +283,8 @@ export class LiveProvider implements PaymentProviderClient {
   }
 
   async getPayment(_network: NetworkCode, providerTransactionId: string): Promise<ProviderPayment> {
-    const cfg = await requireConfig();
+    // A transfer is looked up with the account that sent it, a payment with the one that collected it.
+    const cfg = await requireConfig(isTransferId(providerTransactionId) ? "send" : "receive");
     const path = isTransferId(providerTransactionId) ? `/transfers/${encodeURIComponent(providerTransactionId)}` : `/order/${encodeURIComponent(providerTransactionId)}`;
     const started = Date.now();
     const res = await call(cfg, "getPayment", undefined, "GET", path);
@@ -294,8 +298,9 @@ export class LiveProvider implements PaymentProviderClient {
     return { providerTransactionId, status: mapProviderStatus(data.status), amount };
   }
 
+  // The wallet that pays transfers out.
   async getBalance(_network: NetworkCode): Promise<ProviderBalance> {
-    const cfg = await requireConfig();
+    const cfg = await requireConfig("send");
     let res = await call(cfg, "getBalance", undefined, "GET", "/balance");
     if (res.status === 404) res = await call(cfg, "getBalance", undefined, "GET", "/wallet");
     const available = Number(res.json.available ?? res.json.balance);
@@ -305,22 +310,38 @@ export class LiveProvider implements PaymentProviderClient {
     return { available, currency: "HTG" };
   }
 
-  // The result is only ever surfaced through the admin API.
+  // The result is only ever surfaced through the admin API. Checks the "receive"
+  // credentials and, when the account for sending money is a different one, that too.
   async healthCheck(): Promise<ProviderHealth> {
     const started = Date.now();
-    const cfg = await getEffectiveConfig();
-    if (!cfg.configured) return { ok: false, responseMs: Date.now() - started, message: `${cfg.name} credentials are not configured` };
-    const host = new URL(cfg.apiUrl).host;
-    try {
-      await getToken(cfg, true);
-    } catch {
-      return { ok: false, responseMs: Date.now() - started, message: `${cfg.name} configured (${host}) but authentication failed — check the credentials` };
+    const receive = await getEffectiveConfig("receive");
+    const send = await getEffectiveConfig("send");
+    if (!receive.configured && !send.configured) {
+      return { ok: false, responseMs: Date.now() - started, message: `${receive.name} credentials are not configured` };
     }
-    try {
-      const balance = await this.getBalance("MONCASH");
-      return { ok: true, responseMs: Date.now() - started, message: `${cfg.name} connected (${host}); wallet ${balance.available} HTG` };
-    } catch {
-      return { ok: true, responseMs: Date.now() - started, message: `${cfg.name} connected (${host}); wallet balance unavailable` };
-    }
+    const parts: string[] = [];
+    let ok = true;
+    const check = async (label: string, cfg: EffectiveConfig, withBalance: boolean) => {
+      const host = new URL(cfg.apiUrl).host;
+      try {
+        await getToken(cfg, true);
+      } catch {
+        ok = false;
+        parts.push(`${label}: authentication failed — check the credentials (${host})`);
+        return;
+      }
+      if (!withBalance) return void parts.push(`${label}: connected (${host})`);
+      try {
+        const balance = await this.getBalance("MONCASH");
+        parts.push(`${label}: connected (${host}); wallet ${balance.available} HTG`);
+      } catch {
+        parts.push(`${label}: connected (${host}); wallet balance unavailable`);
+      }
+    };
+    if (receive.configured) await check("receive", receive, false);
+    else parts.push("receive: not configured");
+    if (send.configured) await check(send.inherited ? "send (same account)" : "send", send, true);
+    else parts.push("send: not configured");
+    return { ok: ok && (receive.configured || send.configured), responseMs: Date.now() - started, message: `${receive.name} — ${parts.join(" · ")}` };
   }
 }

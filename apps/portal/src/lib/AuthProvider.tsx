@@ -16,7 +16,7 @@ interface AuthContextValue {
   user: SessionUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  signup: (email: string, password: string, name: string, services: ("receive" | "send")[]) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -56,8 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signup = useCallback(
-    async (email: string, password: string, name: string) => {
-      const data = await authRequest("/auth/signup", { email, password, name });
+    async (email: string, password: string, name: string, services: ("receive" | "send")[]) => {
+      const data = await authRequest("/auth/signup", { email, password, name, services });
       start(data);
       router.push("/dashboard");
     },

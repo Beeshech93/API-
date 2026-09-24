@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import { api, callPublicApi } from "@/lib/apiClient";
 import { useErrorMessage, useT } from "@/lib/i18n";
 import { Badge, Button, Card, CopyButton, ErrorNote, PageTitle, Select, Table, TextInput } from "@/components/ui";
+import { useAccount } from "@/lib/useAccount";
 
 const PERMISSIONS = ["payments:read", "payments:create", "transfers:read", "transfers:create", "balance:read", "transactions:read", "webhooks:manage"];
-const DEFAULT_PERMISSIONS = ["payments:read", "payments:create", "balance:read", "transactions:read"];
+const DEFAULT_PERMISSIONS = ["payments:read", "payments:create", "transfers:read", "transfers:create", "balance:read", "transactions:read"];
+// Permissions that only make sense for one of the two things an account can do.
+const RECEIVE_ONLY = ["payments:read", "payments:create"];
+const SEND_ONLY = ["transfers:read", "transfers:create"];
 
 interface Key {
   id: string;
@@ -25,6 +29,8 @@ export default function ApiKeysPage() {
   const [keys, setKeys] = useState<Key[]>([]);
   const [name, setName] = useState("");
   const [environment, setEnvironment] = useState<"TEST" | "LIVE">("TEST");
+  const account = useAccount();
+  const allowed = PERMISSIONS.filter((p) => !(RECEIVE_ONLY.includes(p) && account && !account.services.receive) && !(SEND_ONLY.includes(p) && account && !account.services.send));
   const [permissions, setPermissions] = useState<string[]>(DEFAULT_PERMISSIONS);
   const [revealed, setRevealed] = useState<(Key & { api_key: string }) | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -41,7 +47,7 @@ export default function ApiKeysPage() {
     setBusy(true);
     setError(null);
     try {
-      const created = await api<Key & { api_key: string }>("/portal/api-keys", { method: "POST", body: { name, environment, permissions } });
+      const created = await api<Key & { api_key: string }>("/portal/api-keys", { method: "POST", body: { name, environment, permissions: permissions.filter((p) => allowed.includes(p)) } });
       setRevealed(created);
       setTestResult(null);
       setName("");
@@ -115,7 +121,7 @@ export default function ApiKeysPage() {
         <fieldset className="mt-4">
           <legend className="text-sm text-slate-600 mb-2">{t("keys.permissions")}</legend>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {PERMISSIONS.map((p) => (
+            {allowed.map((p) => (
               <label key={p} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={permissions.includes(p)} onChange={() => toggle(p)} />
                 <code className="text-xs">{p}</code>
@@ -124,7 +130,7 @@ export default function ApiKeysPage() {
           </div>
         </fieldset>
         <div className="mt-4">
-          <Button onClick={create} disabled={busy || !name.trim() || permissions.length === 0}>{t("keys.create")}</Button>
+          <Button onClick={create} disabled={busy || !name.trim() || permissions.filter((p) => allowed.includes(p)).length === 0}>{t("keys.create")}</Button>
         </div>
         <ErrorNote message={error} />
       </Card>

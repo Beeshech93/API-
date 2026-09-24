@@ -44,11 +44,27 @@ export async function listKeys(clientId: string) {
   return keys.map(serialize);
 }
 
+// Permissions that only make sense for one of the two jobs an account can have.
+const RECEIVE_PERMISSIONS: Permission[] = ["payments:read", "payments:create"];
+const SEND_PERMISSIONS: Permission[] = ["transfers:read", "transfers:create"];
+
+export function assertPermissionsFit(services: { canReceive: boolean; canSend: boolean }, permissions: readonly string[]) {
+  if (!services.canReceive && permissions.some((p) => (RECEIVE_PERMISSIONS as string[]).includes(p))) {
+    throw new AppError("FORBIDDEN", "This account is not set up to receive payments, so it can't use payments permissions.");
+  }
+  if (!services.canSend && permissions.some((p) => (SEND_PERMISSIONS as string[]).includes(p))) {
+    throw new AppError("FORBIDDEN", "This account is not set up to send money, so it can't use transfers permissions.");
+  }
+}
+
 export async function createKey(
   clientId: string,
   actor: { userId: string; ip?: string },
   input: { name: string; environment: ApiEnvironment; permissions: Permission[] }
 ) {
+  const account = await prisma.client.findUnique({ where: { id: clientId }, select: { canReceive: true, canSend: true } });
+  assertPermissionsFit(account ?? { canReceive: false, canSend: false }, input.permissions);
+
   const activeOfEnvironment = await prisma.apiKey.count({
     where: { clientId, environment: input.environment, revokedAt: null },
   });

@@ -99,6 +99,9 @@ model Client {
   status    ClientStatus @default(ACTIVE)
   // LIVE keys work only when an administrator has enabled LIVE access (see limits).
   liveEnabled Boolean    @default(false) @map("live_enabled")
+  // What the account was set up for: receiving payments and/or sending money.
+  canReceive  Boolean    @default(true) @map("can_receive")
+  canSend     Boolean    @default(true) @map("can_send")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
@@ -409,6 +412,8 @@ enum FundingMethod {
   BANK_DEPOSIT
   BANK_TRANSFER
   CRYPTO_USDT
+  // Simulated credit for TEST (sandbox) balances; never real money.
+  SANDBOX
 }
 
 enum FundingStatus {
@@ -422,6 +427,7 @@ model Funding {
   id                    String        @id
   clientId              String        @map("client_id")
   method                FundingMethod
+  environment           ApiEnvironment @default(LIVE)
   amount                Decimal       @db.Decimal(14, 2)
   // What was actually credited (an administrator may adjust it when approving).
   creditedAmount        Decimal?      @db.Decimal(14, 2) @map("credited_amount")

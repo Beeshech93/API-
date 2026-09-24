@@ -3,7 +3,7 @@ import { prisma } from "@/utils/prisma";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { AppError } from "@/utils/errors";
 import { ipRateLimit } from "@/middleware/rateLimit";
-import { getEffectiveConfig } from "@/services/providerConfig.service";
+import { getWebhookSecrets } from "@/services/providerConfig.service";
 import { verifyProviderWebhook } from "@/providers/live.webhook";
 import { syncFromProvider } from "@/services/payment.service";
 import { syncFunding } from "@/services/funding.service";
@@ -18,9 +18,8 @@ providerWebhookRouter.post(
   "/",
   ipRateLimit(120, "provider-webhook"),
   asyncHandler(async (req, res) => {
-    const config = await getEffectiveConfig();
     const raw = (req as unknown as { rawBody?: string }).rawBody ?? "";
-    if (!verifyProviderWebhook(req.headers, raw, config.webhookSecret).ok) {
+    if (!verifyProviderWebhook(req.headers, raw, await getWebhookSecrets()).ok) {
       throw new AppError("UNAUTHORIZED", "Invalid signature.");
     }
 

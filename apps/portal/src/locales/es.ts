@@ -106,7 +106,7 @@ const es: Record<MessageKey, string> = {
   "doc.auth.title": "Autenticación",
   "doc.auth.body": "Envía tu clave API como token Bearer en el encabezado Authorization. Las claves se crean en el panel, se muestran completas una sola vez y solo deben usarse desde tu servidor, nunca desde un navegador o app móvil.",
   "doc.keys.title": "Claves API",
-  "doc.keys.body": "Las claves hp_test_… usan el sandbox y nunca mueven dinero real. Las claves hp_live_… requieren que el acceso LIVE esté activado en tu cuenta. Cada clave tiene permisos (mínimo privilegio): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Puedes revocar o regenerar una clave en cualquier momento.",
+  "doc.keys.body": "Las claves hp_test_… usan el sandbox y nunca mueven dinero real. Las claves hp_live_… requieren que el acceso LIVE esté activado en tu cuenta. Cada clave tiene permisos (mínimo privilegio): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Puedes revocar o regenerar una clave en cualquier momento. Una cuenta se configura para recibir pagos, enviar dinero o ambos, y sus claves solo pueden llevar los permisos que corresponden.",
   "doc.moncash.title": "MonCash",
   "doc.moncash.body": "Usa /api/v1/moncash para pagos, transacciones y saldo de MonCash.",
   "doc.natcash.title": "NatCash",
@@ -126,7 +126,7 @@ const es: Record<MessageKey, string> = {
   "doc.limits.title": "Límites de uso",
   "doc.limits.body": "Los límites se aplican por cliente, clave API, endpoint e IP. Al excederlos recibes HTTP 429, un encabezado Retry-After y error.retry_after (segundos). No hay cuota mensual de solicitudes.",
   "doc.sandbox.title": "Entorno de pruebas",
-  "doc.sandbox.body": "Las claves de PRUEBA usan un proveedor simulado: nunca dinero real. Usa estos números de teléfono para provocar cada resultado, o llama al endpoint de simulación para completar un pago o transferencia pendiente y disparar el webhook. Para probar transferencias, primero fondea tu saldo sandbox con un pago de prueba completado (teléfono terminado en 0001).",
+  "doc.sandbox.body": "Las claves de PRUEBA usan un proveedor simulado: nunca dinero real. Usa estos números de teléfono para provocar cada resultado, o llama al endpoint de simulación para completar un pago o transferencia pendiente y disparar el webhook. Para probar transferencias, primero fondea tu saldo sandbox con un pago de prueba completado (teléfono terminado en 0001). Las cuentas que solo envían dinero pueden añadir fondos simulados con POST /api/v1/sandbox/fund (clave de PRUEBA) para probar transferencias.",
   "doc.quote.title": "Cotización y comisiones",
   "doc.quote.body": "Pide la comisión y el total exactos antes de cobrar. La misma comisión se guarda en la transacción al crear el pago.",
   "doc.base": "URL base",
@@ -240,6 +240,20 @@ const es: Record<MessageKey, string> = {
   "admin.fund.min": "Mínimo (HTG)",
   "admin.fund.instr": "Instrucciones que ven los clientes",
   "admin.pendingFunding": "Recargas pendientes",
+
+  "auth.services": "¿Para qué usarás HaitiPay?",
+  "auth.services.receive": "Recibir pagos",
+  "auth.services.receive.hint": "Cobra a tus clientes mediante MonCash.",
+  "auth.services.send": "Enviar dinero",
+  "auth.services.send.hint": "Paga a billeteras MonCash y NatCash (pagos, salarios, reembolsos).",
+  "auth.servicesHint": "Elige al menos una. Puedes marcar las dos.",
+  "fund.receiveOnly": "Tu cuenta está configurada solo para recibir pagos, así que no hay nada que recargar. Para también enviar dinero, contacta a soporte para añadirlo a tu cuenta.",
+  "admin.cfg.role.receive": "Recibir pagos",
+  "admin.cfg.role.receive.sub": "La cuenta del proveedor que se usa para cobrar pagos y recargas de saldo.",
+  "admin.cfg.role.send": "Enviar dinero",
+  "admin.cfg.role.send.sub": "La cuenta del proveedor que se usa para enviar dinero. Déjala vacía para usar la de recibir pagos en ambos casos.",
+  "admin.cfg.sendInherits": "No hay credenciales separadas guardadas: el envío de dinero usa la cuenta de recibir pagos.",
+  "admin.cfg.sendMissing": "El envío de dinero aún no está configurado. Guarda sus credenciales aquí o configura la cuenta de recibir pagos.",
 };
 
 export default es;

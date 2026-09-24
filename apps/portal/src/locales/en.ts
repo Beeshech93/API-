@@ -104,7 +104,7 @@ const en = {
   "doc.auth.title": "Authentication",
   "doc.auth.body": "Send your API key as a Bearer token in the Authorization header. Keys are created in the dashboard, are shown in full only once, and must only ever be used from your server — never from a browser or mobile app.",
   "doc.keys.title": "API Keys",
-  "doc.keys.body": "hp_test_… keys use the sandbox and never move real money. hp_live_… keys need LIVE access enabled for your account. Each key has permissions (least privilege): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. You can revoke or rotate a key at any time.",
+  "doc.keys.body": "hp_test_… keys use the sandbox and never move real money. hp_live_… keys need LIVE access enabled for your account. Each key has permissions (least privilege): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. You can revoke or rotate a key at any time. An account is set up to receive payments, send money, or both, and its keys can only carry the permissions that fit.",
   "doc.moncash.title": "MonCash",
   "doc.moncash.body": "Use /api/v1/moncash for payments, transactions and balance on MonCash.",
   "doc.natcash.title": "NatCash",
@@ -124,7 +124,7 @@ const en = {
   "doc.limits.title": "Rate limits",
   "doc.limits.body": "Limits apply per client, API key, endpoint and IP. When exceeded you get HTTP 429, a Retry-After header and error.retry_after (seconds). There is no monthly request quota.",
   "doc.sandbox.title": "Test environment",
-  "doc.sandbox.body": "TEST keys run against a simulated provider: no real money, ever. Use these phone numbers to trigger each outcome, or call the simulate endpoint to complete a pending payment or transfer and fire the webhook. To try transfers, first fund your sandbox balance with a completed test payment (phone ending 0001).",
+  "doc.sandbox.body": "TEST keys run against a simulated provider: no real money, ever. Use these phone numbers to trigger each outcome, or call the simulate endpoint to complete a pending payment or transfer and fire the webhook. To try transfers, first fund your sandbox balance with a completed test payment (phone ending 0001). Accounts that only send money can add simulated funds with POST /api/v1/sandbox/fund (TEST key) to try transfers.",
   "doc.quote.title": "Quote & fees",
   "doc.quote.body": "Ask for the exact fee and total before charging. The same fee is stored on the transaction when you create the payment.",
   "doc.base": "Base URL",
@@ -238,6 +238,20 @@ const en = {
   "admin.fund.min": "Minimum (HTG)",
   "admin.fund.instr": "Instructions shown to clients",
   "admin.pendingFunding": "Pending recharges",
+
+  "auth.services": "What will you use HaitiPay for?",
+  "auth.services.receive": "Receive payments",
+  "auth.services.receive.hint": "Collect money from your customers through MonCash.",
+  "auth.services.send": "Send money",
+  "auth.services.send.hint": "Pay out to MonCash and NatCash wallets (payouts, salaries, refunds).",
+  "auth.servicesHint": "Choose at least one. You can select both.",
+  "fund.receiveOnly": "Your account is set up to receive payments only, so there is nothing to recharge. To send money as well, contact support to add it to your account.",
+  "admin.cfg.role.receive": "Receive payments",
+  "admin.cfg.role.receive.sub": "The provider account used to collect payments and balance recharges.",
+  "admin.cfg.role.send": "Send money",
+  "admin.cfg.role.send.sub": "The provider account used to send money out. Leave it empty to use the receive-payments account for both.",
+  "admin.cfg.sendInherits": "No separate credentials saved: sending money uses the receive-payments account.",
+  "admin.cfg.sendMissing": "Sending money is not configured yet. Save its credentials here or set up the receive-payments account.",
 } as const;
 
 export type MessageKey = keyof typeof en;

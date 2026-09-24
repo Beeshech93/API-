@@ -14,10 +14,10 @@ import { getFeeConfig, saveFeeConfig } from "@/services/fee.service";
 import { getLimits, saveLimits } from "@/services/limits.service";
 import * as fundingService from "@/services/funding.service";
 import { checkProviders, listProviders } from "@/services/provider.service";
-import { clearConfig, getConfigSummary, saveConfig } from "@/services/providerConfig.service";
+import { assertRole, clearConfig, getConfigSummary, saveConfig } from "@/services/providerConfig.service";
 import { getUsage } from "@/services/usage.service";
 import * as paymentService from "@/services/payment.service";
-import { signupSchema } from "@/validators/schemas";
+import { adminCreateClientSchema, servicesSchema } from "@/validators/schemas";
 
 export const adminRouter = Router();
 adminRouter.use(requireUser, requireAdmin);
@@ -63,7 +63,7 @@ adminRouter.get("/clients", asyncHandler(async (req, res) => {
     success: true,
     clients: clients.map((c) => ({
       id: c.id, name: c.name, status: c.status.toLowerCase(), created_at: c.createdAt,
-      users: c.users, live_enabled: c.liveEnabled,
+      users: c.users, live_enabled: c.liveEnabled, services: { receive: c.canReceive, send: c.canSend },
     })),
   });
 }));
@@ -81,7 +81,7 @@ adminRouter.get("/clients/:id", asyncHandler(async (req, res) => {
   ]);
   res.json({
     success: true,
-    client: { id: client.id, name: client.name, status: client.status.toLowerCase(), live_enabled: client.liveEnabled, created_at: client.createdAt },
+    client: { id: client.id, name: client.name, status: client.status.toLowerCase(), live_enabled: client.liveEnabled, services: { receive: client.canReceive, send: client.canSend }, created_at: client.createdAt },
     users: client.users,
     api_keys: client.apiKeys.map((k) => ({ id: k.id, name: k.name, environment: k.environment.toLowerCase(), last4: k.last4, status: k.revokedAt ? "revoked" : "active", last_used_at: k.lastUsedAt })),
     usage,
@@ -91,11 +91,11 @@ adminRouter.get("/clients/:id", asyncHandler(async (req, res) => {
 }));
 
 adminRouter.post("/clients", asyncHandler(async (req, res) => {
-  const body = signupSchema.parse(req.body);
+  const body = adminCreateClientSchema.parse(req.body);
   if (await prisma.user.findUnique({ where: { email: body.email.toLowerCase() } })) throw new AppError("CONFLICT", "Email already registered.");
   const passwordHash = await bcrypt.hash(body.password, 12);
   const created = await prisma.$transaction(async (tx) => {
-    const client = await tx.client.create({ data: { name: body.name } });
+    const client = await tx.client.create({ data: { name: body.name, canReceive: body.services.includes("receive"), canSend: body.services.includes("send") } });
     await tx.user.create({ data: { clientId: client.id, email: body.email.toLowerCase(), passwordHash, name: body.name } });
     return client;
   });
@@ -116,6 +116,17 @@ const setStatus = (status: "ACTIVE" | "SUSPENDED") =>
   });
 adminRouter.post("/clients/:id/suspend", setStatus("SUSPENDED"));
 adminRouter.post("/clients/:id/reactivate", setStatus("ACTIVE"));
+
+// What the account is set up for (receiving payments and/or sending money).
+adminRouter.post("/clients/:id/services", asyncHandler(async (req, res) => {
+  const { services } = z.object({ services: servicesSchema }).parse(req.body);
+  const client = await prisma.client.findUnique({ where: { id: req.params.id } });
+  if (!client) throw new AppError("NOT_FOUND", "Client not found.");
+  const canReceive = services.includes("receive"), canSend = services.includes("send");
+  await prisma.client.update({ where: { id: client.id }, data: { canReceive, canSend } });
+  await audit({ action: "admin.client_services_changed", actorUserId: req.user!.id, clientId: client.id, ip: clientIp(req), metadata: { receive: canReceive, send: canSend } });
+  res.json({ success: true, services: { receive: canReceive, send: canSend } });
+}));
 
 // Enables or disables LIVE access for a client (see settings/limits).
 adminRouter.post("/clients/:id/live-access", asyncHandler(async (req, res) => {
@@ -195,11 +206,13 @@ const providerConfigSchema = z.object({
   secretKey: z.string().max(500).optional(),
   webhookSecret: z.string().max(500).optional(),
 });
-adminRouter.get("/providers/config", asyncHandler(async (_req, res) => res.json({ success: true, config: await getConfigSummary() })));
+// ?role=receive (default) or ?role=send: separate provider credentials for collecting
+// payments and for sending money. Without send credentials, sending reuses the receive ones.
+adminRouter.get("/providers/config", asyncHandler(async (req, res) => res.json({ success: true, config: await getConfigSummary(assertRole(req.query.role)) })));
 adminRouter.put("/providers/config", ipRateLimit(20, "admin-config"), asyncHandler(async (req, res) => {
-  res.json({ success: true, config: await saveConfig(providerConfigSchema.parse(req.body), actor(req)) });
+  res.json({ success: true, config: await saveConfig(providerConfigSchema.parse(req.body), actor(req), assertRole(req.query.role)) });
 }));
-adminRouter.delete("/providers/config", asyncHandler(async (req, res) => res.json({ success: true, config: await clearConfig(actor(req)) })));
+adminRouter.delete("/providers/config", asyncHandler(async (req, res) => res.json({ success: true, config: await clearConfig(actor(req), assertRole(req.query.role)) })));
 
 // "Test Connection": probes the provider from the backend; secrets never leave it.
 adminRouter.post("/providers/check", asyncHandler(async (_req, res) => res.json({ success: true, providers: await checkProviders() })));

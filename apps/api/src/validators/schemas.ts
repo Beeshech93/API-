@@ -3,11 +3,22 @@ import { env } from "@/config/env";
 import { PERMISSIONS } from "@/services/apikey.service";
 import { WEBHOOK_EVENTS } from "@/services/webhook.service";
 
-export const signupSchema = z.object({
+// What an account is for. Chosen when it is created: receive payments, send money, or both.
+export const servicesSchema = z
+  .array(z.enum(["receive", "send"]))
+  .min(1, "Choose at least one: receive payments or send money.")
+  .max(10) // duplicates are collapsed below; only two distinct values exist
+  .transform((v) => [...new Set(v)]);
+
+const accountFields = {
   email: z.string().trim().email().max(254),
   password: z.string().min(10, "Password must be at least 10 characters.").max(72),
   name: z.string().trim().min(1).max(120),
-});
+};
+
+export const signupSchema = z.object({ ...accountFields, services: servicesSchema });
+// Administrators creating an account for someone else: both unless said otherwise.
+export const adminCreateClientSchema = z.object({ ...accountFields, services: servicesSchema.default(["receive", "send"]) });
 
 export const loginSchema = z.object({
   email: z.string().trim().email().max(254),

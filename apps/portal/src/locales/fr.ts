@@ -106,7 +106,7 @@ const fr: Record<MessageKey, string> = {
   "doc.auth.title": "Authentification",
   "doc.auth.body": "Envoyez votre clé API comme jeton Bearer dans l'en-tête Authorization. Les clés se créent dans le tableau de bord, ne sont affichées en entier qu'une seule fois et ne doivent être utilisées que depuis votre serveur — jamais depuis un navigateur ou une application mobile.",
   "doc.keys.title": "Clés API",
-  "doc.keys.body": "Les clés hp_test_… utilisent le sandbox et ne déplacent jamais d'argent réel. Les clés hp_live_… exigent que l'accès LIVE soit activé sur votre compte. Chaque clé a des permissions (moindre privilège) : payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Vous pouvez révoquer ou régénérer une clé à tout moment.",
+  "doc.keys.body": "Les clés hp_test_… utilisent le sandbox et ne déplacent jamais d'argent réel. Les clés hp_live_… exigent que l'accès LIVE soit activé sur votre compte. Chaque clé a des permissions (moindre privilège) : payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Vous pouvez révoquer ou régénérer une clé à tout moment. Un compte est configuré pour recevoir des paiements, envoyer de l'argent, ou les deux, et ses clés ne peuvent porter que les permissions correspondantes.",
   "doc.moncash.title": "MonCash",
   "doc.moncash.body": "Utilisez /api/v1/moncash pour les paiements, transactions et le solde MonCash.",
   "doc.natcash.title": "NatCash",
@@ -126,7 +126,7 @@ const fr: Record<MessageKey, string> = {
   "doc.limits.title": "Limites de débit",
   "doc.limits.body": "Les limites s'appliquent par client, clé API, endpoint et IP. En cas de dépassement : HTTP 429, en-tête Retry-After et error.retry_after (secondes). Il n'y a pas de quota mensuel de requêtes.",
   "doc.sandbox.title": "Environnement de test",
-  "doc.sandbox.body": "Les clés TEST s'exécutent contre un fournisseur simulé : jamais d'argent réel. Utilisez ces numéros de téléphone pour déclencher chaque résultat, ou appelez l'endpoint de simulation pour terminer un paiement ou un transfert en attente et déclencher le webhook. Pour essayer les transferts, alimentez d'abord votre solde sandbox avec un paiement de test terminé (numéro finissant par 0001).",
+  "doc.sandbox.body": "Les clés TEST s'exécutent contre un fournisseur simulé : jamais d'argent réel. Utilisez ces numéros de téléphone pour déclencher chaque résultat, ou appelez l'endpoint de simulation pour terminer un paiement ou un transfert en attente et déclencher le webhook. Pour essayer les transferts, alimentez d'abord votre solde sandbox avec un paiement de test terminé (numéro finissant par 0001). Les comptes qui ne font qu'envoyer de l'argent peuvent ajouter des fonds simulés avec POST /api/v1/sandbox/fund (clé TEST) pour essayer les transferts.",
   "doc.quote.title": "Devis et frais",
   "doc.quote.body": "Demandez les frais et le total exacts avant d'encaisser. Les mêmes frais sont enregistrés sur la transaction à la création du paiement.",
   "doc.base": "URL de base",
@@ -240,6 +240,20 @@ const fr: Record<MessageKey, string> = {
   "admin.fund.min": "Minimum (HTG)",
   "admin.fund.instr": "Instructions affichées aux clients",
   "admin.pendingFunding": "Recharges en attente",
+
+  "auth.services": "Pour quoi utiliserez-vous HaitiPay ?",
+  "auth.services.receive": "Recevoir des paiements",
+  "auth.services.receive.hint": "Encaissez l'argent de vos clients via MonCash.",
+  "auth.services.send": "Envoyer de l'argent",
+  "auth.services.send.hint": "Payez vers des portefeuilles MonCash et NatCash (versements, salaires, remboursements).",
+  "auth.servicesHint": "Choisissez-en au moins un. Vous pouvez cocher les deux.",
+  "fund.receiveOnly": "Votre compte est configuré uniquement pour recevoir des paiements : il n'y a rien à recharger. Pour aussi envoyer de l'argent, contactez le support afin de l'ajouter à votre compte.",
+  "admin.cfg.role.receive": "Recevoir des paiements",
+  "admin.cfg.role.receive.sub": "Le compte fournisseur utilisé pour encaisser les paiements et les recharges de solde.",
+  "admin.cfg.role.send": "Envoyer de l'argent",
+  "admin.cfg.role.send.sub": "Le compte fournisseur utilisé pour envoyer de l'argent. Laissez vide pour utiliser le compte de réception pour les deux.",
+  "admin.cfg.sendInherits": "Aucun identifiant séparé enregistré : l'envoi d'argent utilise le compte de réception des paiements.",
+  "admin.cfg.sendMissing": "L'envoi d'argent n'est pas encore configuré. Enregistrez ses identifiants ici ou configurez le compte de réception.",
 };
 
 export default fr;

@@ -126,10 +126,9 @@ type Db = Prisma.TransactionClient | typeof prisma;
 // shared by both networks — the platform holds one provider wallet, and some
 // networks can only be paid out to, not collected on. Payouts can only ever draw
 // on the client's OWN collected funds, never on the platform's provider wallet.
-// Money added by recharging (LIVE, HTG): completed fundings.
-async function fundedTotal(db: Db, clientId: string, environment: ApiEnvironment, currency: string) {
-  if (environment !== "LIVE" || currency !== "HTG") return new Prisma.Decimal(0);
-  const sum = await db.funding.aggregate({ where: { clientId, status: "COMPLETED", currency: "HTG" }, _sum: { creditedAmount: true } });
+// Money added by recharging: completed fundings (real ones in LIVE, simulated in TEST).
+async function fundedTotal(db: Db, clientId: string, environment: ApiEnvironment, currency: "HTG" | "USD") {
+  const sum = await db.funding.aggregate({ where: { clientId, environment, status: "COMPLETED", currency }, _sum: { creditedAmount: true } });
   return sum._sum.creditedAmount ?? new Prisma.Decimal(0);
 }
 
@@ -177,6 +176,11 @@ async function createOperation(
 
   const existing = await findExisting();
   if (existing) return replay(existing, print);
+
+  // The account must be set up for what it is asking to do.
+  const account = await prisma.client.findUnique({ where: { id: ctx.clientId }, select: { canReceive: true, canSend: true } });
+  if (type === "PAYMENT" && !account?.canReceive) throw new AppError("FORBIDDEN", "This account is not set up to receive payments.");
+  if (type === "TRANSFER" && !account?.canSend) throw new AppError("FORBIDDEN", "This account is not set up to send money.");
 
   // Refuse what the provider couldn't carry out (unsupported network, missing
   // recipient...) before anything is created or any funds are reserved.
@@ -334,9 +338,12 @@ export async function getCollectedBalance(clientId: string, environment: ApiEnvi
     where: { clientId, environment, status: { in: ["PENDING", "PROCESSING", "COMPLETED"] } },
     _sum: { amount: true, feeAmount: true },
   });
-  const funded = await fundedTotal(prisma, clientId, environment, "HTG");
+  const fundedRows = await prisma.funding.groupBy({ by: ["currency"], where: { clientId, environment, status: "COMPLETED" }, _sum: { creditedAmount: true } });
   const byCurrency = new Map<string, { collected: Prisma.Decimal; fees: Prisma.Decimal; sent: Prisma.Decimal; sentFees: Prisma.Decimal; funded: Prisma.Decimal }>();
-  if (funded.gt(0)) byCurrency.set("HTG", { collected: new Prisma.Decimal(0), fees: new Prisma.Decimal(0), sent: new Prisma.Decimal(0), sentFees: new Prisma.Decimal(0), funded });
+  for (const f of fundedRows) {
+    const funded = f._sum.creditedAmount ?? new Prisma.Decimal(0);
+    if (funded.gt(0)) byCurrency.set(f.currency, { collected: new Prisma.Decimal(0), fees: new Prisma.Decimal(0), sent: new Prisma.Decimal(0), sentFees: new Prisma.Decimal(0), funded });
+  }
   for (const g of groups) {
     const row = byCurrency.get(g.currency) ?? { collected: new Prisma.Decimal(0), fees: new Prisma.Decimal(0), sent: new Prisma.Decimal(0), sentFees: new Prisma.Decimal(0), funded: new Prisma.Decimal(0) };
     const amount = g._sum.amount ?? new Prisma.Decimal(0);

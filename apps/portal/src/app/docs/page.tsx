@@ -28,6 +28,7 @@ const ENDPOINTS = [
   ["GET", "/api/v1/natcash/transactions", "transactions:read"],
   ["GET", "/api/v1/natcash/balance", "balance:read"],
   ["POST", "/api/v1/sandbox/transactions/{transaction_id}/simulate", "payments:create | transfers:create (TEST)"],
+  ["POST", "/api/v1/sandbox/fund", "transfers:create (TEST)"],
 ];
 
 const ERRORS = [

@@ -43,10 +43,12 @@ export async function checkProviders() {
 export async function listProviders() {
   const rows = await prisma.provider.findMany({ orderBy: { code: "asc" } });
   const config = await getEffectiveConfig();
+  const sendConfig = await getEffectiveConfig("send");
   return rows.map((p) => ({
     code: p.code, name: p.code === "primary" ? config.name : p.name, status: p.status.toLowerCase(), last_checked_at: p.lastCheckedAt,
     last_success_at: p.lastSuccessAt, response_time_ms: p.lastResponseMs, error_rate: p.errorRate, message: p.message,
     // Credentials are never exposed; only whether they are configured.
     credentials: p.code === "primary" ? (config.configured ? "configured" : "missing") : undefined,
+    send_credentials: p.code === "primary" ? (sendConfig.configured ? (sendConfig.inherited ? "shared" : "configured") : "missing") : undefined,
   }));
 }

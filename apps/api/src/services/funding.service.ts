@@ -17,8 +17,10 @@ import { logProviderCall } from "@/services/providerLog.service";
 //     the proof; an administrator verifies it and approves or rejects.
 // A completed funding adds to the client's available balance (HTG, LIVE only).
 
-export const MANUAL_METHODS: FundingMethod[] = ["NATCASH", "ZELLE", "BANK_DEPOSIT", "BANK_TRANSFER", "CRYPTO_USDT"];
-export const ALL_METHODS: FundingMethod[] = ["MONCASH", ...MANUAL_METHODS];
+// SANDBOX credits (simulated, TEST only) are not a method clients or admins configure.
+export type RealMethod = Exclude<FundingMethod, "SANDBOX">;
+export const MANUAL_METHODS: RealMethod[] = ["NATCASH", "ZELLE", "BANK_DEPOSIT", "BANK_TRANSFER", "CRYPTO_USDT"];
+export const ALL_METHODS: RealMethod[] = ["MONCASH", ...MANUAL_METHODS];
 const MAX_AMOUNT = 10_000_000;
 const MAX_PENDING = 10;
 
@@ -28,7 +30,7 @@ export interface MethodConfig {
   // Shown to clients (account number, wallet address, Zelle email...). Manual methods only.
   instructions: string;
 }
-export type FundingConfig = Record<FundingMethod, MethodConfig>;
+export type FundingConfig = Record<RealMethod, MethodConfig>;
 
 export const DEFAULT_FUNDING_CONFIG: FundingConfig = {
   MONCASH: { enabled: true, minAmount: 100, instructions: "" },
@@ -94,15 +96,17 @@ export interface FundingInput {
   note?: string;
 }
 
-export async function createFunding(client: { id: string; liveEnabled: boolean }, input: FundingInput, requestId: string) {
+export async function createFunding(client: { id: string; liveEnabled: boolean; canSend: boolean }, input: FundingInput, requestId: string) {
+  if (!client.canSend) throw new AppError("FORBIDDEN", "This account is not set up to send money, so there is nothing to recharge.");
   assertLiveAllowed(await getLimits(), client);
+  if (input.method === "SANDBOX") throw new AppError("INVALID_REQUEST", "This funding method is not available.");
   const config = (await getFundingConfig())[input.method];
   if (!config.enabled) throw new AppError("INVALID_REQUEST", "This funding method is not available.");
   if (!Number.isFinite(input.amount) || input.amount < config.minAmount) {
     throw new AppError("INVALID_AMOUNT", `The minimum amount for this method is ${config.minAmount} HTG.`);
   }
   if (input.amount > MAX_AMOUNT) throw new AppError("INVALID_AMOUNT", `The maximum amount is ${MAX_AMOUNT} HTG.`);
-  if ((await prisma.funding.count({ where: { clientId: client.id, status: "PENDING" } })) >= MAX_PENDING) {
+  if ((await prisma.funding.count({ where: { clientId: client.id, environment: "LIVE", status: "PENDING" } })) >= MAX_PENDING) {
     throw new AppError("FORBIDDEN", "You have too many pending funding requests. Wait for them to be settled first.");
   }
 
@@ -202,7 +206,7 @@ export async function reconcileFundings(limit = 25, olderThanMs = 60_000) {
 }
 
 export async function listClientFundings(clientId: string) {
-  let rows = await prisma.funding.findMany({ where: { clientId }, orderBy: { createdAt: "desc" }, take: 50 });
+  let rows = await prisma.funding.findMany({ where: { clientId, environment: "LIVE" }, orderBy: { createdAt: "desc" }, take: 50 });
   // Pending automatic fundings are re-checked with the provider when the client looks (max 5, 5s freshness).
   const stale = rows.filter((f) => f.method === "MONCASH" && f.status === "PENDING" && f.providerTransactionId && Date.now() - f.updatedAt.getTime() > 5_000).slice(0, 5);
   if (stale.length) {
@@ -215,7 +219,7 @@ export async function listClientFundings(clientId: string) {
 
 export async function listAllFundings(status?: FundingStatus) {
   const rows = await prisma.funding.findMany({
-    where: status ? { status } : {},
+    where: { environment: "LIVE", ...(status ? { status } : {}) },
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { client: { select: { name: true } } },
@@ -247,4 +251,13 @@ export async function rejectFunding(id: string, actor: { userId: string }, note:
 function decided(result: { funding: Funding; won: boolean }) {
   if (!result.won) throw new AppError("CONFLICT", `This request is already ${result.funding.status.toLowerCase()}.`);
   return result.funding;
+}
+
+// Sandbox only: adds simulated money to a TEST balance so an account that only sends
+// money (and so can't receive test payments) can still try transfers. Never real money.
+export async function sandboxFund(clientId: string, amount: number, currency: "HTG" | "USD") {
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) throw new AppError("INVALID_AMOUNT", "Amount must be between 1 and 1,000,000.");
+  return prisma.funding.create({
+    data: { id: newFundingId(), clientId, method: "SANDBOX", environment: "TEST", amount, creditedAmount: amount, currency, status: "COMPLETED", requestId: "sandbox" },
+  });
 }

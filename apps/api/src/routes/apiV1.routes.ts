@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { Network } from "@prisma/client";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { AppError } from "@/utils/errors";
@@ -10,6 +11,8 @@ import {
 } from "@/validators/schemas";
 import { computeQuote, assertAmountInRange, getFeeConfig } from "@/services/fee.service";
 import * as payments from "@/services/payment.service";
+import { sandboxFund } from "@/services/funding.service";
+import { prisma } from "@/utils/prisma";
 
 export const apiV1Router = Router();
 
@@ -46,6 +49,22 @@ apiV1Router.post(
       outcome
     );
     res.json(payments.serializeTransaction(t));
+  })
+);
+
+// Sandbox only: simulated money for a TEST balance, so an account that only sends money
+// can try transfers. It never touches a real balance.
+apiV1Router.post(
+  "/sandbox/fund",
+  requireApiKey,
+  requirePermission("transfers:create"),
+  asyncHandler(async (req, res) => {
+    if (req.apiAuth!.environment !== "TEST") throw new AppError("FORBIDDEN", "Sandbox funding is only available with a TEST API key.");
+    const account = await prisma.client.findUnique({ where: { id: req.apiAuth!.clientId }, select: { canSend: true } });
+    if (!account?.canSend) throw new AppError("FORBIDDEN", "This account is not set up to send money.");
+    const { amount, currency } = z.object({ amount: z.number().positive(), currency: z.enum(["HTG", "USD"]).default("HTG") }).parse(req.body);
+    await sandboxFund(req.apiAuth!.clientId, amount, currency);
+    res.status(201).json({ success: true, environment: "test", balances: await payments.getCollectedBalance(req.apiAuth!.clientId, "TEST") });
   })
 );
 
