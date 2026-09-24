@@ -102,6 +102,12 @@ model Client {
   // What the account was set up for: receiving payments and/or sending money.
   canReceive  Boolean    @default(true) @map("can_receive")
   canSend     Boolean    @default(true) @map("can_send")
+  // Identity verification (KYC). Required before anything touches real money (LIVE).
+  kycStatus      KycStatus @default(NOT_STARTED) @map("kyc_status")
+  kycSubmittedAt DateTime? @map("kyc_submitted_at")
+  kycReviewedAt  DateTime? @map("kyc_reviewed_at")
+  kycReviewedBy  String?   @map("kyc_reviewed_by")
+  kycReviewNote  String?   @map("kyc_review_note")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
@@ -114,6 +120,8 @@ model Client {
   invoices     Invoice[]
   apiLogs      ApiLog[]
   fundings     Funding[]
+  kycProfile   KycProfile?
+  kycDocuments KycDocument[]
 
   @@map("clients")
 }
@@ -459,4 +467,71 @@ model Funding {
   @@index([providerTransactionId])
   @@index([status])
   @@map("fundings")
+}
+
+enum KycStatus {
+  NOT_STARTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum KycAccountType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum KycDocumentType {
+  ID_FRONT
+  ID_BACK
+  SELFIE
+  PROOF_OF_ADDRESS
+  BUSINESS_REGISTRATION
+}
+
+// What the client declares about themselves and their business/website.
+model KycProfile {
+  clientId            String         @id @map("client_id")
+  accountType         KycAccountType @map("account_type")
+  fullName            String         @map("full_name")
+  dateOfBirth         DateTime       @db.Date @map("date_of_birth")
+  phone               String
+  address             String
+  city                String
+  country             String         @default("HT")
+  idType              String         @map("id_type")
+  // The ID number is encrypted at rest; only the last 4 characters are kept in the clear.
+  idNumberSealed      Json           @map("id_number_sealed")
+  idNumberLast4       String         @map("id_number_last4")
+  websiteUrl          String         @map("website_url")
+  // HTTP status the site answered with when it was submitted (null = unreachable).
+  websiteStatus       Int?           @map("website_status")
+  websiteCheckedAt    DateTime?      @map("website_checked_at")
+  businessName        String?        @map("business_name")
+  businessDescription String         @map("business_description")
+  expectedVolume      String?        @map("expected_volume")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("kyc_profiles")
+}
+
+// Photos of the documents. The image bytes are encrypted (AES-256-GCM) before they are stored.
+model KycDocument {
+  id        String          @id @default(uuid())
+  clientId  String          @map("client_id")
+  type      KycDocumentType
+  mime      String
+  size      Int
+  sha256    String
+  data      Bytes
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, type])
+  @@map("kyc_documents")
 }

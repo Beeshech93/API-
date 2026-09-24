@@ -33,3 +33,17 @@ export function open<T = Record<string, string>>(box: SealedBox): T {
   const plain = Buffer.concat([decipher.update(Buffer.from(box.data, "base64")), decipher.final()]);
   return JSON.parse(plain.toString("utf8")) as T;
 }
+
+// The same AES-256-GCM for binary data (identity document photos): iv (12) | tag (16) | ciphertext.
+export function sealBytes(plain: Buffer): Buffer {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key(), iv);
+  const data = Buffer.concat([cipher.update(plain), cipher.final()]);
+  return Buffer.concat([iv, cipher.getAuthTag(), data]);
+}
+
+export function openBytes(box: Buffer): Buffer {
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key(), box.subarray(0, 12));
+  decipher.setAuthTag(box.subarray(12, 28));
+  return Buffer.concat([decipher.update(box.subarray(28)), decipher.final()]);
+}

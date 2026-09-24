@@ -96,7 +96,7 @@ export interface FundingInput {
   note?: string;
 }
 
-export async function createFunding(client: { id: string; liveEnabled: boolean; canSend: boolean }, input: FundingInput, requestId: string) {
+export async function createFunding(client: { id: string; liveEnabled: boolean; kycStatus: import("@prisma/client").KycStatus; canSend: boolean }, input: FundingInput, requestId: string) {
   if (!client.canSend) throw new AppError("FORBIDDEN", "This account is not set up to send money, so there is nothing to recharge.");
   assertLiveAllowed(await getLimits(), client);
   if (input.method === "SANDBOX") throw new AppError("INVALID_REQUEST", "This funding method is not available.");

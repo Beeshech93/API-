@@ -18,7 +18,7 @@ CLIENT → API KEY → HAITIPAY API → validation → LIVE access / rate limits
 ## Status
 
 - **Works end to end:** signup/login (rotating httpOnly refresh tokens), API keys with permissions, idempotent payments **and transfers (send money)** on both MonCash and NatCash — payouts draw only on the client's collected balance, reserved atomically — quotes/fees, HMAC webhooks
-  (SSRF-protected), each account chooses at sign-up whether it receives payments, sends money or both, with two separate APIs (`/api/v1/receive/…` and `/api/v1/send/…`) and separate single-purpose API keys, per-client LIVE access approval, separate provider credentials for receiving and for sending, balance recharge (MonCash automatic; NatCash, Zelle, bank, USDT verified by an administrator), rate limits per client / key / endpoint / IP, API + audit logs,
+  (SSRF-protected), each account chooses at sign-up whether it receives payments, sends money or both, with two separate APIs (`/api/v1/receive/…` and `/api/v1/send/…`) and separate single-purpose API keys, identity verification (KYC: details, website and encrypted document photos, reviewed by an administrator) before any real money, per-client LIVE access approval, separate provider credentials for receiving and for sending, balance recharge (MonCash automatic; NatCash, Zelle, bank, USDT verified by an administrator), rate limits per client / key / endpoint / IP, API + audit logs,
   admin panel, and a deterministic **sandbox** that never moves money.
 - **LIVE processing** is wired to the payment provider from its public API docs
   (`apps/api/src/providers/live.provider.ts`): every LIVE request is validated, priced and

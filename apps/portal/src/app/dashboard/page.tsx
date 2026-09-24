@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useErrorMessage, useT } from "@/lib/i18n";
@@ -7,6 +8,7 @@ import { Badge, BarChart, Card, ErrorNote, PageTitle, Stat, lastNDays } from "@/
 
 interface Overview {
   live_access: boolean;
+  kyc_status: "not_started" | "pending" | "approved" | "rejected";
   services: { receive: boolean; send: boolean };
   requests: { used: number; period: string };
   transactions: { total: number; completed: number; failed: number };
@@ -43,7 +45,15 @@ export default function OverviewPage() {
         {data.services.send && <Badge value="live" label={t("auth.services.send")} />}
       </div>
 
-      {!data.live_access && (
+      {data.kyc_status !== "approved" && (
+        <Card className={`p-5 mb-6 ${data.kyc_status === "rejected" ? "border-red-300 bg-red-50" : "border-brand/40 bg-brand-100"}`}>
+          <p className="font-semibold text-navy">{t(`kyc.banner.${data.kyc_status}.title`)}</p>
+          <p className="text-sm text-slate-600 mt-1">{t(`kyc.banner.${data.kyc_status}.body`)}</p>
+          {data.kyc_status !== "pending" && <Link href="/dashboard/kyc" className="inline-block mt-3 bg-brand text-white px-4 py-2 rounded-lg text-sm font-semibold">{t("kyc.cta")}</Link>}
+        </Card>
+      )}
+
+      {data.kyc_status === "approved" && !data.live_access && (
         <Card className="p-5 mb-6 border-brand/40 bg-brand-100">
           <p className="font-semibold text-navy">{t("overview.liveOffTitle")}</p>
           <p className="text-sm text-slate-600 mt-1">{t("overview.liveOffBody")}</p>

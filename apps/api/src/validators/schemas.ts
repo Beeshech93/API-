@@ -100,3 +100,41 @@ export const listQuerySchema = z.object({
   before: z.string().datetime().optional(),
   environment: z.enum(["test", "live"]).optional(),
 });
+
+// ---- KYC ---------------------------------------------------------------------
+
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD.")
+  .refine((v) => !Number.isNaN(Date.parse(`${v}T00:00:00Z`)), "Not a valid date.")
+  .refine((v) => {
+    const age = (Date.now() - Date.parse(`${v}T00:00:00Z`)) / (365.25 * 24 * 3600 * 1000);
+    return age >= 18 && age <= 120;
+  }, "You must be at least 18 years old.");
+
+export const kycProfileSchema = z
+  .object({
+    account_type: z.enum(["individual", "business"]),
+    full_name: z.string().trim().min(2).max(120),
+    date_of_birth: isoDate,
+    phone: z
+      .string()
+      .transform((v) => v.replace(/[\s()+-]/g, ""))
+      .refine((v) => /^\d{8,15}$/.test(v), "Enter a valid phone number."),
+    address: z.string().trim().min(5).max(200),
+    city: z.string().trim().min(2).max(80),
+    country: z.string().trim().length(2).default("HT"),
+    id_type: z.enum(["national_id", "passport", "driver_license"]),
+    id_number: z.string().trim().min(4).max(40).regex(/^[A-Za-z0-9\- ]+$/, "Only letters, digits and dashes."),
+    website_url: z.string().trim().url().max(300),
+    business_name: z.string().trim().min(2).max(120).optional(),
+    business_description: z.string().trim().min(20, "Describe what you will use HaitiPay for (at least 20 characters).").max(1000),
+    expected_volume: z.enum(["lt_100k", "100k_1m", "1m_10m", "gt_10m"]).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.account_type === "business" && !v.business_name) ctx.addIssue({ code: "custom", path: ["business_name"], message: "Business name is required for a business account." });
+  });
+
+export const kycDocumentTypeSchema = z
+  .enum(["id_front", "id_back", "selfie", "proof_of_address", "business_registration"])
+  .transform((t) => t.toUpperCase() as "ID_FRONT" | "ID_BACK" | "SELFIE" | "PROOF_OF_ADDRESS" | "BUSINESS_REGISTRATION");

@@ -7,7 +7,7 @@ import { useErrorMessage, useT } from "@/lib/i18n";
 import { Badge, Button, Card, ErrorNote, PageTitle, Table } from "@/components/ui";
 
 interface Detail {
-  client: { id: string; name: string; status: string; live_enabled: boolean; services: { receive: boolean; send: boolean }; created_at: string };
+  client: { id: string; name: string; status: string; live_enabled: boolean; kyc_status: string; services: { receive: boolean; send: boolean }; created_at: string };
   users: { id: string; email: string; role: string }[];
   api_keys: { id: string; name: string; category: string; environment: string; last4: string; status: string; last_used_at: string | null }[];
   usage: { period: string; requests: number; transactions: number };
@@ -46,6 +46,7 @@ export default function ClientDetail({ params }: { params: { id: string } }) {
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         <Card className="p-5">
           <h2 className="font-semibold text-navy mb-3">{t("admin.liveAccess")}</h2>
+          <p className="text-xs text-slate-500 mb-2">{t("admin.kyc")}: <Badge value={d.client.kyc_status === "approved" ? "active" : d.client.kyc_status === "pending" ? "pending" : d.client.kyc_status === "rejected" ? "failed" : "unknown"} label={t(`kyc.status.${d.client.kyc_status}`)} /></p>
           <p className="text-sm mb-3"><Badge value={d.client.live_enabled ? "active" : "none"} label={d.client.live_enabled ? t("overview.liveOn") : t("overview.liveOff")} /></p>
           {d.client.live_enabled
             ? <Button variant="secondary" onClick={() => confirm(t("admin.confirmDisableLive")) && act("live-access", { enabled: false })}>{t("admin.disableLive")}</Button>

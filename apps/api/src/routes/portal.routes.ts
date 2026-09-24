@@ -6,12 +6,14 @@ import { clientIp } from "@/utils/ip";
 import { prisma } from "@/utils/prisma";
 import { tbl } from "@/utils/sql";
 import { requireUser } from "@/middleware/auth.jwt";
-import { createKeySchema, createWebhookSchema, listQuerySchema } from "@/validators/schemas";
+import { createKeySchema, createWebhookSchema, kycDocumentTypeSchema, kycProfileSchema, listQuerySchema } from "@/validators/schemas";
 import * as keys from "@/services/apikey.service";
 import * as webhooks from "@/services/webhook.service";
 import * as payments from "@/services/payment.service";
 import { getLimits, isLiveAllowed } from "@/services/limits.service";
 import * as funding from "@/services/funding.service";
+import * as kyc from "@/services/kyc.service";
+import express from "express";
 import { ipRateLimit } from "@/middleware/rateLimit";
 import { getUsage } from "@/services/usage.service";
 
@@ -26,7 +28,7 @@ const actor = (req: import("express").Request) => ({ userId: req.user!.id, ip: c
 portalRouter.get("/account", asyncHandler(async (req, res) => {
   const [client, limits] = await Promise.all([prisma.client.findUnique({ where: { id: req.user!.clientId } }), getLimits()]);
   if (!client) throw new AppError("NOT_FOUND", "Client not found.");
-  res.json({ success: true, name: client.name, services: { receive: client.canReceive, send: client.canSend }, live_access: isLiveAllowed(limits, client) });
+  res.json({ success: true, name: client.name, services: { receive: client.canReceive, send: client.canSend }, kyc_status: client.kycStatus.toLowerCase(), live_access: isLiveAllowed(limits, client) });
 }));
 
 portalRouter.get(
@@ -35,7 +37,7 @@ portalRouter.get(
     const clientId = req.user!.clientId;
     const [limits, client, usage, activeKeys, statusGroups] = await Promise.all([
       getLimits(),
-      prisma.client.findUnique({ where: { id: clientId }, select: { liveEnabled: true, canReceive: true, canSend: true } }),
+      prisma.client.findUnique({ where: { id: clientId }, select: { liveEnabled: true, kycStatus: true, canReceive: true, canSend: true } }),
       getUsage(clientId),
       prisma.apiKey.count({ where: { clientId, revokedAt: null } }),
       prisma.transaction.groupBy({ by: ["status"], where: { clientId }, _count: true }),
@@ -65,7 +67,8 @@ portalRouter.get(
 
     res.json({
       success: true,
-      live_access: isLiveAllowed(limits, { liveEnabled: client?.liveEnabled ?? false }),
+      live_access: isLiveAllowed(limits, { liveEnabled: client?.liveEnabled ?? false, kycStatus: client?.kycStatus ?? "NOT_STARTED" }),
+      kyc_status: (client?.kycStatus ?? "NOT_STARTED").toLowerCase(),
       services: { receive: client?.canReceive ?? false, send: client?.canSend ?? false },
       requests: { used: usage.requests, period: usage.period },
       transactions: { total, completed, failed },
@@ -213,8 +216,49 @@ portalRouter.get("/funding", asyncHandler(async (req, res) => {
 
 portalRouter.post("/funding", ipRateLimit(20, "funding"), asyncHandler(async (req, res) => {
   const body = fundingSchema.parse(req.body);
-  const client = await prisma.client.findUnique({ where: { id: req.user!.clientId }, select: { id: true, liveEnabled: true, canSend: true } });
+  const client = await prisma.client.findUnique({ where: { id: req.user!.clientId }, select: { id: true, liveEnabled: true, kycStatus: true, canSend: true } });
   if (!client) throw new AppError("NOT_FOUND", "Client not found.");
   const created = await funding.createFunding(client, body, req.ctx.requestId);
   res.status(201).json({ success: true, funding: funding.serializeFunding(created) });
+}));
+
+// ---- Identity verification (KYC) ---------------------------------------------
+
+portalRouter.get("/kyc", asyncHandler(async (req, res) => {
+  res.json({ success: true, ...(await kyc.getClientKyc(req.user!.clientId)) });
+}));
+
+portalRouter.put("/kyc/profile", ipRateLimit(30, "kyc-profile"), asyncHandler(async (req, res) => {
+  const b = kycProfileSchema.parse(req.body);
+  await kyc.saveProfile(req.user!.clientId, {
+    accountType: b.account_type.toUpperCase() as "INDIVIDUAL" | "BUSINESS",
+    fullName: b.full_name, dateOfBirth: b.date_of_birth, phone: b.phone, address: b.address, city: b.city, country: b.country,
+    idType: b.id_type, idNumber: b.id_number, websiteUrl: b.website_url, businessName: b.business_name,
+    businessDescription: b.business_description, expectedVolume: b.expected_volume,
+  });
+  res.json({ success: true, ...(await kyc.getClientKyc(req.user!.clientId)) });
+}));
+
+// A document photo is sent as the raw image (JPEG, PNG or WebP), one per request. What it
+// really is gets decided from its bytes, not from the header.
+portalRouter.put(
+  "/kyc/documents/:type",
+  ipRateLimit(60, "kyc-upload"),
+  express.raw({ type: ["image/jpeg", "image/png", "image/webp"], limit: kyc.MAX_DOCUMENT_BYTES }),
+  asyncHandler(async (req, res) => {
+    const type = kycDocumentTypeSchema.parse(req.params.type);
+    if (!Buffer.isBuffer(req.body)) throw new AppError("INVALID_REQUEST", "Send the photo as image/jpeg, image/png or image/webp.");
+    await kyc.putDocument(req.user!.clientId, type, req.body);
+    res.json({ success: true, ...(await kyc.getClientKyc(req.user!.clientId)) });
+  })
+);
+
+portalRouter.delete("/kyc/documents/:type", ipRateLimit(60, "kyc-delete"), asyncHandler(async (req, res) => {
+  await kyc.deleteDocument(req.user!.clientId, kycDocumentTypeSchema.parse(req.params.type));
+  res.json({ success: true, ...(await kyc.getClientKyc(req.user!.clientId)) });
+}));
+
+portalRouter.post("/kyc/submit", ipRateLimit(10, "kyc-submit"), asyncHandler(async (req, res) => {
+  await kyc.submitKyc(req.user!.clientId);
+  res.json({ success: true, ...(await kyc.getClientKyc(req.user!.clientId)) });
 }));

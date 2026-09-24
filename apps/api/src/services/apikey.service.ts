@@ -105,8 +105,8 @@ export async function createKey(
   });
 
   if (input.environment === "LIVE") {
-    const [limits, client] = await Promise.all([getLimits(), prisma.client.findUnique({ where: { id: clientId }, select: { liveEnabled: true } })]);
-    assertLiveAllowed(limits, { liveEnabled: client?.liveEnabled ?? false });
+    const [limits, client] = await Promise.all([getLimits(), prisma.client.findUnique({ where: { id: clientId }, select: { liveEnabled: true, kycStatus: true } })]);
+    assertLiveAllowed(limits, { liveEnabled: client?.liveEnabled ?? false, kycStatus: client?.kycStatus ?? "NOT_STARTED" });
     if (activeOfEnvironment >= limits.maxLiveKeys) {
       throw new AppError("FORBIDDEN", `You can have at most ${limits.maxLiveKeys} active LIVE API keys.`);
     }

@@ -13,6 +13,8 @@ import { audit } from "@/services/audit.service";
 import { getFeeConfig, saveFeeConfig } from "@/services/fee.service";
 import { getLimits, saveLimits } from "@/services/limits.service";
 import * as fundingService from "@/services/funding.service";
+import * as kycService from "@/services/kyc.service";
+import { kycDocumentTypeSchema } from "@/validators/schemas";
 import { checkProviders, listProviders } from "@/services/provider.service";
 import { assertRole, clearConfig, getConfigSummary, saveConfig } from "@/services/providerConfig.service";
 import { getUsage } from "@/services/usage.service";
@@ -26,10 +28,11 @@ const actor = (req: import("express").Request) => ({ userId: req.user!.id, ip: c
 
 adminRouter.get("/overview", asyncHandler(async (_req, res) => {
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
-  const [clients, liveClients, pendingFundings, requests, tx, failed, volume, providers] = await Promise.all([
+  const [clients, liveClients, pendingFundings, pendingKyc, requests, tx, failed, volume, providers] = await Promise.all([
     prisma.client.count(),
     prisma.client.count({ where: { liveEnabled: true } }),
     prisma.funding.count({ where: { status: "PENDING", method: { not: "MONCASH" } } }),
+    prisma.client.count({ where: { kycStatus: "PENDING" } }),
     prisma.usageRecord.aggregate({ where: { period: `${monthStart.getUTCFullYear()}-${String(monthStart.getUTCMonth() + 1).padStart(2, "0")}` }, _sum: { requests: true } }),
     prisma.transaction.count({ where: { environment: "LIVE" } }),
     prisma.transaction.count({ where: { environment: "LIVE", status: "FAILED" } }),
@@ -41,6 +44,7 @@ adminRouter.get("/overview", asyncHandler(async (_req, res) => {
     total_clients: clients,
     live_clients: liveClients,
     pending_fundings: pendingFundings,
+    pending_kyc: pendingKyc,
     api_requests: requests._sum.requests ?? 0,
     transactions: tx,
     failed_transactions: failed,
@@ -63,7 +67,7 @@ adminRouter.get("/clients", asyncHandler(async (req, res) => {
     success: true,
     clients: clients.map((c) => ({
       id: c.id, name: c.name, status: c.status.toLowerCase(), created_at: c.createdAt,
-      users: c.users, live_enabled: c.liveEnabled, services: { receive: c.canReceive, send: c.canSend },
+      users: c.users, live_enabled: c.liveEnabled, kyc_status: c.kycStatus.toLowerCase(), services: { receive: c.canReceive, send: c.canSend },
     })),
   });
 }));
@@ -81,7 +85,7 @@ adminRouter.get("/clients/:id", asyncHandler(async (req, res) => {
   ]);
   res.json({
     success: true,
-    client: { id: client.id, name: client.name, status: client.status.toLowerCase(), live_enabled: client.liveEnabled, services: { receive: client.canReceive, send: client.canSend }, created_at: client.createdAt },
+    client: { id: client.id, name: client.name, status: client.status.toLowerCase(), live_enabled: client.liveEnabled, kyc_status: client.kycStatus.toLowerCase(), services: { receive: client.canReceive, send: client.canSend }, created_at: client.createdAt },
     users: client.users,
     api_keys: client.apiKeys.map((k) => ({ id: k.id, name: k.name, category: k.category.toLowerCase(), environment: k.environment.toLowerCase(), last4: k.last4, status: k.revokedAt ? "revoked" : "active", last_used_at: k.lastUsedAt })),
     usage,
@@ -133,6 +137,8 @@ adminRouter.post("/clients/:id/live-access", asyncHandler(async (req, res) => {
   const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
   const client = await prisma.client.findUnique({ where: { id: req.params.id } });
   if (!client) throw new AppError("NOT_FOUND", "Client not found.");
+  // LIVE can only be opened for a verified client.
+  if (enabled && client.kycStatus !== "APPROVED") throw new AppError("CONFLICT", "This client has not passed identity verification (KYC) yet.");
   await prisma.client.update({ where: { id: client.id }, data: { liveEnabled: enabled } });
   await audit({ action: enabled ? "admin.live_access_enabled" : "admin.live_access_disabled", actorUserId: req.user!.id, clientId: client.id, ip: clientIp(req) });
   res.json({ success: true, live_enabled: enabled });
@@ -164,6 +170,41 @@ adminRouter.put("/settings/limits", asyncHandler(async (req, res) => {
   const limits = await saveLimits(limitsSchema.parse(req.body));
   await audit({ action: "admin.limits_updated", actorUserId: req.user!.id, ip: clientIp(req), metadata: { ...limits } });
   res.json({ success: true, limits });
+}));
+
+// ---- Identity verification (KYC) review ---------------------------------------
+
+const kycStatusFilter = z.enum(["pending", "approved", "rejected"]);
+adminRouter.get("/kyc", asyncHandler(async (req, res) => {
+  const status = typeof req.query.status === "string" ? (kycStatusFilter.parse(req.query.status).toUpperCase() as "PENDING") : undefined;
+  res.json({ success: true, submissions: await kycService.listKyc(status) });
+}));
+adminRouter.get("/kyc/:clientId", asyncHandler(async (req, res) => {
+  res.json({ success: true, ...(await kycService.getKycForReview(req.params.clientId, actor(req))) });
+}));
+// The photo itself. Sent with headers that keep it out of caches and stop it being interpreted as anything but an image.
+adminRouter.get("/kyc/:clientId/documents/:type", ipRateLimit(120, "admin-kyc-doc"), asyncHandler(async (req, res) => {
+  const doc = await kycService.getDocumentForReview(req.params.clientId, kycDocumentTypeSchema.parse(req.params.type), actor(req));
+  res.setHeader("Content-Type", doc.mime);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'");
+  res.send(doc.bytes);
+}));
+adminRouter.post("/kyc/:clientId/approve", ipRateLimit(60, "admin-kyc"), asyncHandler(async (req, res) => {
+  const { note } = z.object({ note: z.string().trim().max(300).optional() }).parse(req.body ?? {});
+  await kycService.approveKyc(req.params.clientId, actor(req), note);
+  res.json({ success: true });
+}));
+adminRouter.post("/kyc/:clientId/reject", ipRateLimit(60, "admin-kyc"), asyncHandler(async (req, res) => {
+  const { note } = z.object({ note: z.string().trim().min(5).max(500) }).parse(req.body ?? {});
+  await kycService.rejectKyc(req.params.clientId, actor(req), note);
+  res.json({ success: true });
+}));
+adminRouter.post("/kyc/:clientId/revoke", ipRateLimit(60, "admin-kyc"), asyncHandler(async (req, res) => {
+  const { note } = z.object({ note: z.string().trim().min(5).max(500) }).parse(req.body ?? {});
+  await kycService.revokeKyc(req.params.clientId, actor(req), note);
+  res.json({ success: true });
 }));
 
 // ---- Funding (balance recharges) ---------------------------------------------

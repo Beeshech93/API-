@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { KycStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/utils/prisma";
 import { AppError } from "@/utils/errors";
 
@@ -39,11 +39,24 @@ export async function saveLimits(limits: PlatformLimits): Promise<PlatformLimits
   return limits;
 }
 
-export const isLiveAllowed = (limits: PlatformLimits, client: { liveEnabled: boolean }) =>
-  !limits.requireLiveApproval || client.liveEnabled;
+export interface LiveSubject {
+  liveEnabled: boolean;
+  kycStatus: KycStatus;
+}
 
-export function assertLiveAllowed(limits: PlatformLimits, client: { liveEnabled: boolean }): void {
-  if (!isLiveAllowed(limits, client)) {
-    throw new AppError("FORBIDDEN", "LIVE access has not been enabled for this account yet. Contact support to activate it.");
-  }
+// Real money needs, in this order: an approved identity verification (KYC — always), and
+// unless the administrator switched it off, LIVE access enabled for the client.
+export function liveBlockReason(limits: PlatformLimits, client: LiveSubject): string | null {
+  if (client.kycStatus === "PENDING") return "Your identity verification (KYC) is under review. LIVE access opens once it is approved.";
+  if (client.kycStatus === "REJECTED") return "Your identity verification (KYC) was not approved. Review the notes in your dashboard and submit it again.";
+  if (client.kycStatus !== "APPROVED") return "Identity verification (KYC) is required before using LIVE. Complete it in your dashboard under Verification.";
+  if (limits.requireLiveApproval && !client.liveEnabled) return "LIVE access has not been enabled for this account yet. Contact support to activate it.";
+  return null;
+}
+
+export const isLiveAllowed = (limits: PlatformLimits, client: LiveSubject) => liveBlockReason(limits, client) === null;
+
+export function assertLiveAllowed(limits: PlatformLimits, client: LiveSubject): void {
+  const reason = liveBlockReason(limits, client);
+  if (reason) throw new AppError("FORBIDDEN", reason);
 }

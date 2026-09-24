@@ -25,7 +25,7 @@ export async function requireApiKey(req: Request, res: Response, next: NextFunct
     const auth = await authenticate(token);
     req.apiAuth = auth;
 
-    const client = await prisma.client.findUnique({ where: { id: auth.clientId }, select: { status: true, liveEnabled: true } });
+    const client = await prisma.client.findUnique({ where: { id: auth.clientId }, select: { status: true, liveEnabled: true, kycStatus: true } });
     if (!client || client.status === "SUSPENDED") throw new AppError("FORBIDDEN", "This account is suspended.");
 
     const limits = await getLimits();

@@ -85,6 +85,35 @@ export async function api<T = any>(path: string, options: Options = {}): Promise
   return data as T;
 }
 
+// Uploads one image (a KYC document photo) as the raw body. Same silent-refresh behaviour as api().
+export async function uploadImage<T = any>(path: string, image: Blob): Promise<T> {
+  const send = () =>
+    fetch(`${BACKEND}${path}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": image.type || "image/jpeg", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      body: image,
+    });
+  let res = await send();
+  if (res.status === 401) {
+    if (await refreshSession()) res = await send();
+  }
+  const data = await parse(res);
+  if (!res.ok) throw toError(res, data);
+  return data as T;
+}
+
+// Fetches a protected image (an <img> tag can't send the Authorization header).
+export async function apiBlob(path: string): Promise<Blob> {
+  const send = () => fetch(`${BACKEND}${path}`, { credentials: "include", headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+  let res = await send();
+  if (res.status === 401) {
+    if (await refreshSession()) res = await send();
+  }
+  if (!res.ok) throw toError(res, await parse(res));
+  return res.blob();
+}
+
 export async function authRequest<T = any>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BACKEND}${path}`, {
     method: "POST",

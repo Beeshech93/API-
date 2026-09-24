@@ -25,6 +25,11 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return res.status(400).json(body(code, message, requestId));
   }
 
+  // Body too large (the body parser stops it before it is read).
+  if (typeof err === "object" && err !== null && (err as { type?: string }).type === "entity.too.large") {
+    return res.status(413).json(body("INVALID_REQUEST", "The file is too large.", requestId));
+  }
+
   if (err instanceof SyntaxError && "body" in err) {
     return res.status(400).json(body("INVALID_REQUEST", "Malformed JSON body.", requestId));
   }
