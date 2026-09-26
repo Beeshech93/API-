@@ -15,5 +15,10 @@
     "prisma:migrate": "npm run prisma:migrate --workspace apps/api",
     "prisma:studio": "npm run prisma:studio --workspace apps/api",
     "postinstall": "npm run build --workspace packages/shared"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.23"
+    }
   }
 }

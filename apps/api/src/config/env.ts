@@ -13,13 +13,23 @@ const isProduction = process.env.NODE_ENV === "production" || Boolean(process.en
 // Provider credentials belong to the platform operator only. They are
 // read here from the backend environment and never stored in the database,
 // returned by any endpoint, or sent to a browser.
+// A guessable signing key would let anyone forge sessions, so production refuses to start without a real one.
+function jwtSecret(): string {
+  const value = process.env.JWT_SECRET;
+  if (isProduction) {
+    if (!value || value.length < 32) throw new Error("JWT_SECRET must be set to a random string of at least 32 characters.");
+    return value;
+  }
+  return value ?? "dev-only-insecure-secret";
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   isProduction,
   port: Number(process.env.PORT ?? 4000),
   databaseUrl: required("DATABASE_URL"),
   jwt: {
-    secret: required("JWT_SECRET", "dev-only-insecure-secret"),
+    secret: jwtSecret(),
     accessTtlSeconds: Number(process.env.ACCESS_TOKEN_TTL_SECONDS ?? 15 * 60),
     refreshTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS ?? 30),
   },

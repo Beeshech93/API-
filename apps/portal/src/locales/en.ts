@@ -4,7 +4,7 @@ const en = {
   "common.view": "View", "common.empty": "Nothing here yet.",
   "nav.docs": "Documentation", "nav.dashboard": "Dashboard", "nav.signIn": "Sign in", "nav.signOut": "Sign out", "nav.apiKeys": "API Keys",
   "nav.transactions": "Transactions", "nav.webhooks": "Webhooks", "nav.apiLogs": "API Logs", "nav.usage": "Usage",
-  "nav.settings": "Settings", "nav.support": "Support","nav.startNow": "Get started",
+  "nav.settings": "Settings", "nav.support": "Support",
   "auth.signupTitle": "Create your account", "auth.name": "Name", "auth.email": "Email", "auth.password": "Password",
   "auth.passwordHint": "At least 10 characters.", "auth.createAccount": "Create account", "auth.creating": "Creating account…",
   "auth.haveAccount": "Already have an account?", "auth.signInLink": "Sign in", "auth.signinTitle": "Sign in", "auth.signingIn": "Signing in…",
@@ -41,8 +41,6 @@ const en = {
   "usage.history": "Monthly history", "usage.period": "Period", "usage.empty": "No usage yet.",
 
 
-
-
   "settings.profile": "Profile", "settings.language": "Language",
   "support.subtitle": "We're here to help you integrate.", "support.tip": "Include the request_id from the failing call — it lets us trace it end to end.",
   "support.email": "Email", "support.noEmail": "Support contact details will be published here.",
@@ -51,8 +49,8 @@ const en = {
   "admin.systemStatus": "System status", "admin.createClient": "Create client",
   "admin.account": "Account", "admin.suspend": "Suspend", "admin.reactivate": "Reactivate", "admin.confirmSuspend": "Suspend this client? Their API keys stop working immediately.",
   "admin.client": "Client",
-  "admin.requestLimit": "Requests / month", "admin.maxKeys": "Max API keys", "admin.rateLimit": "LIVE requests per minute", "admin.feeOverride": "Fee override (bps)",
-  "admin.features": "Features (comma separated codes)",   "admin.testConnection": "Test connection", "admin.credMissing": "not configured", "admin.detail": "Detail",   "admin.errorRate": "Error rate", "admin.refresh": "Refresh", "admin.responseTime": "Response time", "admin.lastSuccess": "Last success", "admin.lastChecked": "Last checked",
+"admin.rateLimit": "LIVE requests per minute",
+"admin.testConnection": "Test connection","admin.errorRate": "Error rate", "admin.refresh": "Refresh", "admin.responseTime": "Response time", "admin.lastSuccess": "Last success", "admin.lastChecked": "Last checked",
   "admin.suspicious": "Suspicious activity (last hour)", "admin.reason": "Reason", "admin.count": "Count", "admin.noSuspicious": "Nothing suspicious detected.",
   "admin.failedLogins": "Repeated failed logins", "admin.badKeys": "Repeated rejected API keys", "admin.audit": "Audit log", "admin.action": "Action",
   "admin.feesTitle": "Fees & limits", "admin.feesSubtitle": "The fee is calculated and stored before each operation runs.",
@@ -61,9 +59,7 @@ const en = {
   "con.title": "Try it", "con.intro": "Paste one of your TEST API keys. This calls the real API in sandbox mode, exactly like your integration would.",
   "con.key": "TEST API key", "con.provider": "Provider", "con.amount": "Amount (HTG)", "con.create": "Create payment", "con.success": "Simulate success",
   "con.failure": "Simulate failure", "con.refresh": "Refresh status", "con.phone": "Phone (test numbers below)",
-  "docs.gettingStarted": "Getting started", "docs.authentication": "Authentication", "docs.payments": "Payments", "docs.webhooks": "Webhooks", "docs.errors": "Errors",
   "docs.tryIt": "Try it", "docs.indexTitle": "HaitiPay API documentation", "docs.indexBody": "Everything you need to integrate: authentication, endpoints, webhooks, errors and the sandbox. Try the console with a TEST API key.",
-  "docs.quote": "Quote & fees", "docs.sandbox": "Sandbox", "docs.limits": "Rate limits",
   "land.hero.title": "One API for MonCash and NatCash.", "land.hero.sub": "Connect your app to payments and transfers in Haiti with a simple, secure, ready-to-integrate API.",
   "land.cta.start": "Get started", "land.cta.docs": "View documentation",
   "land.how.title": "How it works", "land.how.1t": "Create your account", "land.how.1b": "Sign up and get your API key.",
@@ -102,7 +98,6 @@ const en = {
   "doc.keys.title": "API Keys",
   "doc.keys.body": "hp_test_… keys use the sandbox and never move real money. hp_live_… keys need LIVE access enabled for your account. Each key has permissions (least privilege): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. You can revoke or rotate a key at any time. An account is set up to receive payments, send money, or both, and its keys can only carry the permissions that fit. Keys are per API: one for receiving payments, another for sending money.",
 
-
   "doc.payments.title": "Payments",
   "doc.payments.body": "Create a payment for a customer. With a TEST key it stays pending until you simulate it. With a LIVE key the response includes payment_url: send the customer there to pay, then wait for the payment.completed webhook (or read the transaction) — never fulfil an order just because the customer came back. Optional success_url and error_url set where the customer returns. The Idempotency-Key header is required: repeating a request with the same key returns the original transaction and never creates a second payment.",
   "doc.transfers.title": "Transfers",
@@ -139,7 +134,6 @@ const en = {
   "doc.n4": "PROVIDER_TIMEOUT (stays processing)",
   "doc.n5": "any other number: stays pending",
   "con.onlyTest": "Only TEST keys (hp_test_…) can be used from the browser.",
-  "admin.cfg.title": "Manual connection",
   "admin.cfg.subtitle": "Enter the provider credentials here. They are encrypted, never shown again and never sent to any client — only the last 4 characters are displayed.",
   "admin.cfg.name": "Display name (admins only)",
   "admin.cfg.apiUrl": "API URL",
@@ -253,14 +247,12 @@ const en = {
   "doc.receive.body": "Everything for collecting money from your customers lives under /api/v1/receive/{moncash|natcash}. It only has payments — create, read and list them — plus their transactions and balance. It needs a key created for this API (payments:* permissions). The original paths /api/v1/{network}/… keep working for existing integrations.",
   "doc.send.title": "Send API",
   "doc.send.body": "Everything for paying money out lives under /api/v1/send/{moncash|natcash}. It only has transfers — create, read and list them — plus their transactions and balance. It needs a key created for this API (transfers:* permissions). Payouts draw on your available balance.",
-
   "keys.cat.receive.desc": "Keys for the receive-payments API (/api/v1/receive). Use them on your server to collect money from customers.",
   "keys.cat.send.desc": "Keys for the send-money API (/api/v1/send). Use them on your server to pay out to MonCash and NatCash wallets.",
   "keys.cat.receive.create": "Create a receive-payments key",
   "keys.cat.send.create": "Create a send-money key",
   "keys.older.title": "Older keys (both APIs)",
   "keys.older.body": "These keys were created before keys were split by category and can still use both APIs. Rotating one keeps it as is; replace it with one key of each kind when you can.",
-
   "nav.kyc": "Verification",
   "admin.kyc": "Verification (KYC)",
   "admin.pendingKyc": "Verifications pending",

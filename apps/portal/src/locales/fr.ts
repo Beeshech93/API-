@@ -6,7 +6,7 @@ const fr: Record<MessageKey, string> = {
   "common.view": "Voir", "common.empty": "Rien pour le moment.",
   "nav.docs": "Documentation", "nav.dashboard": "Tableau de bord", "nav.signIn": "Se connecter", "nav.signOut": "Se déconnecter", "nav.apiKeys": "Clés API",
   "nav.transactions": "Transactions", "nav.webhooks": "Webhooks", "nav.apiLogs": "Logs API", "nav.usage": "Utilisation",
-  "nav.settings": "Paramètres", "nav.support": "Support","nav.startNow": "Commencer",
+  "nav.settings": "Paramètres", "nav.support": "Support",
   "auth.signupTitle": "Créez votre compte", "auth.name": "Nom", "auth.email": "E-mail", "auth.password": "Mot de passe",
   "auth.passwordHint": "Au moins 10 caractères.", "auth.createAccount": "Créer le compte", "auth.creating": "Création du compte…",
   "auth.haveAccount": "Vous avez déjà un compte ?", "auth.signInLink": "Se connecter", "auth.signinTitle": "Se connecter", "auth.signingIn": "Connexion…",
@@ -43,8 +43,6 @@ const fr: Record<MessageKey, string> = {
   "usage.history": "Historique mensuel", "usage.period": "Période", "usage.empty": "Aucune utilisation pour le moment.",
 
 
-
-
   "settings.profile": "Profil", "settings.language": "Langue",
   "support.subtitle": "Nous sommes là pour vous aider à intégrer.", "support.tip": "Indiquez le request_id de l'appel en échec : il nous permet de le tracer de bout en bout.",
   "support.email": "E-mail", "support.noEmail": "Les coordonnées du support seront publiées ici.",
@@ -53,8 +51,8 @@ const fr: Record<MessageKey, string> = {
   "admin.systemStatus": "État du système", "admin.createClient": "Créer un client",
   "admin.account": "Compte", "admin.suspend": "Suspendre", "admin.reactivate": "Réactiver", "admin.confirmSuspend": "Suspendre ce client ? Ses clés API cesseront de fonctionner immédiatement.",
   "admin.client": "Client",
-  "admin.requestLimit": "Requêtes / mois", "admin.maxKeys": "Clés API max.", "admin.rateLimit": "Requêtes LIVE par minute", "admin.feeOverride": "Frais spécifiques (bps)",
-  "admin.features": "Fonctionnalités (codes séparés par des virgules)",   "admin.testConnection": "Tester la connexion", "admin.credMissing": "non configurés", "admin.detail": "Détail",   "admin.errorRate": "Taux d'erreur", "admin.refresh": "Actualiser", "admin.responseTime": "Temps de réponse", "admin.lastSuccess": "Dernier succès", "admin.lastChecked": "Dernière vérification",
+"admin.rateLimit": "Requêtes LIVE par minute",
+"admin.testConnection": "Tester la connexion","admin.errorRate": "Taux d'erreur", "admin.refresh": "Actualiser", "admin.responseTime": "Temps de réponse", "admin.lastSuccess": "Dernier succès", "admin.lastChecked": "Dernière vérification",
   "admin.suspicious": "Activité suspecte (dernière heure)", "admin.reason": "Raison", "admin.count": "Nombre", "admin.noSuspicious": "Aucune activité suspecte détectée.",
   "admin.failedLogins": "Connexions échouées répétées", "admin.badKeys": "Clés API refusées répétées", "admin.audit": "Journal d'audit", "admin.action": "Action",
   "admin.feesTitle": "Frais et limites", "admin.feesSubtitle": "Les frais sont calculés et enregistrés avant l'exécution de chaque opération.",
@@ -63,9 +61,7 @@ const fr: Record<MessageKey, string> = {
   "con.title": "Essayer", "con.intro": "Collez l'une de vos clés API TEST. Cela appelle la vraie API en mode sandbox, exactement comme votre intégration.",
   "con.key": "Clé API TEST", "con.provider": "Fournisseur", "con.amount": "Montant (HTG)", "con.create": "Créer un paiement", "con.success": "Simuler un succès",
   "con.failure": "Simuler un échec", "con.refresh": "Actualiser le statut", "con.phone": "Téléphone (numéros de test ci-dessous)",
-  "docs.gettingStarted": "Prise en main", "docs.authentication": "Authentification", "docs.payments": "Paiements", "docs.webhooks": "Webhooks", "docs.errors": "Erreurs",
   "docs.tryIt": "Essayer", "docs.indexTitle": "Documentation de l'API HaitiPay", "docs.indexBody": "Tout pour intégrer : authentification, endpoints, webhooks, erreurs et sandbox. Essayez la console avec une clé API TEST.",
-  "docs.quote": "Devis et frais", "docs.sandbox": "Sandbox", "docs.limits": "Limites de débit",
   "land.hero.title": "Une seule API pour MonCash et NatCash.", "land.hero.sub": "Connectez votre application aux paiements et transferts en Haïti avec une API simple, sécurisée et prête à intégrer.",
   "land.cta.start": "Commencer maintenant", "land.cta.docs": "Voir la documentation",
   "land.how.title": "Comment ça marche", "land.how.1t": "Créez votre compte", "land.how.1b": "Inscrivez-vous et obtenez votre clé API.",
@@ -104,7 +100,6 @@ const fr: Record<MessageKey, string> = {
   "doc.keys.title": "Clés API",
   "doc.keys.body": "Les clés hp_test_… utilisent le sandbox et ne déplacent jamais d'argent réel. Les clés hp_live_… exigent que l'accès LIVE soit activé sur votre compte. Chaque clé a des permissions (moindre privilège) : payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Vous pouvez révoquer ou régénérer une clé à tout moment. Un compte est configuré pour recevoir des paiements, envoyer de l'argent, ou les deux, et ses clés ne peuvent porter que les permissions correspondantes. Les clés sont propres à chaque API : une pour recevoir des paiements, une autre pour envoyer de l'argent.",
 
-
   "doc.payments.title": "Paiements",
   "doc.payments.body": "Créez un paiement pour un client. Avec une clé TEST il reste en attente jusqu'à sa simulation. Avec une clé LIVE, la réponse contient payment_url : envoyez le client payer à cette adresse, puis attendez le webhook payment.completed (ou lisez la transaction) — ne livrez jamais une commande simplement parce que le client est revenu. success_url et error_url (optionnels) indiquent où le client revient. L'en-tête Idempotency-Key est obligatoire : répéter une requête avec la même clé renvoie la transaction d'origine sans créer de second paiement.",
   "doc.transfers.title": "Transferts",
@@ -141,7 +136,6 @@ const fr: Record<MessageKey, string> = {
   "doc.n4": "PROVIDER_TIMEOUT (reste en cours)",
   "doc.n5": "tout autre numéro : reste en attente",
   "con.onlyTest": "Seules les clés TEST (hp_test_…) peuvent être utilisées depuis le navigateur.",
-  "admin.cfg.title": "Connexion manuelle",
   "admin.cfg.subtitle": "Saisissez ici les identifiants du fournisseur. Ils sont chiffrés, jamais réaffichés et jamais envoyés à un client — seuls les 4 derniers caractères sont visibles.",
   "admin.cfg.name": "Nom affiché (admins uniquement)",
   "admin.cfg.apiUrl": "URL de l'API",
@@ -255,14 +249,12 @@ const fr: Record<MessageKey, string> = {
   "doc.receive.body": "Tout ce qui sert à encaisser l'argent de vos clients se trouve sous /api/v1/receive/{moncash|natcash}. Elle ne contient que les paiements — les créer, les lire et les lister — ainsi que leurs transactions et le solde. Elle exige une clé créée pour cette API (permissions payments:*). Les chemins d'origine /api/v1/{network}/… continuent de fonctionner pour les intégrations existantes.",
   "doc.send.title": "API d'envoi",
   "doc.send.body": "Tout ce qui sert à verser de l'argent se trouve sous /api/v1/send/{moncash|natcash}. Elle ne contient que les transferts — les créer, les lire et les lister — ainsi que leurs transactions et le solde. Elle exige une clé créée pour cette API (permissions transfers:*). Les versements puisent dans votre solde disponible.",
-
   "keys.cat.receive.desc": "Clés de l'API de réception (/api/v1/receive). À utiliser sur votre serveur pour encaisser l'argent de vos clients.",
   "keys.cat.send.desc": "Clés de l'API d'envoi (/api/v1/send). À utiliser sur votre serveur pour verser vers des portefeuilles MonCash et NatCash.",
   "keys.cat.receive.create": "Créer une clé de réception",
   "keys.cat.send.create": "Créer une clé d'envoi",
   "keys.older.title": "Anciennes clés (les deux API)",
   "keys.older.body": "Ces clés ont été créées avant la séparation par catégorie et peuvent encore utiliser les deux API. La régénérer la conserve telle quelle ; remplacez-la dès que possible par une clé de chaque type.",
-
   "nav.kyc": "Vérification",
   "admin.kyc": "Vérification (KYC)",
   "admin.pendingKyc": "Vérifications en attente",

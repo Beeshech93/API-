@@ -11,6 +11,7 @@ import { recordTransaction } from "@/services/usage.service";
 import { logProviderCall } from "@/services/provider.service";
 import { audit } from "@/services/audit.service";
 import { pollOnce } from "@/workers/webhookDelivery.worker";
+import { inBackground } from "@/utils/background";
 
 export interface KeyContext {
   clientId: string;
@@ -37,7 +38,8 @@ const PAYMENT_EVENTS: Record<TransactionStatus, WebhookEvent | null> = {
   PROCESSING: "payment.processing",
   COMPLETED: "payment.completed",
   FAILED: "payment.failed",
-  CANCELLED: null,
+  // A cancelled payment never completes: tell the client the same way as a failed one.
+  CANCELLED: "payment.failed",
 };
 // Transfers have no "processing" event: they go pending -> completed | failed.
 const TRANSFER_EVENTS: Record<TransactionStatus, WebhookEvent | null> = {
@@ -45,7 +47,7 @@ const TRANSFER_EVENTS: Record<TransactionStatus, WebhookEvent | null> = {
   PROCESSING: null,
   COMPLETED: "transfer.completed",
   FAILED: "transfer.failed",
-  CANCELLED: null,
+  CANCELLED: "transfer.failed",
 };
 const eventFor = (type: TransactionType, status: TransactionStatus) => (type === "TRANSFER" ? TRANSFER_EVENTS : PAYMENT_EVENTS)[status];
 
@@ -111,8 +113,9 @@ async function settle(t: Transaction, status: TransactionStatus, source: string,
     where: { id: t.id, status: { in: ["PENDING", "PROCESSING"] } },
     data: { status, ...extra },
   });
-  if (count === 1) await emitStatus(t, status, source, raw);
-  return (await prisma.transaction.findUnique({ where: { id: t.id } })) ?? t;
+  const won = count === 1;
+  if (won) await emitStatus(t, status, source, raw);
+  return { transaction: (await prisma.transaction.findUnique({ where: { id: t.id } })) ?? t, won };
 }
 
 const fromProviderStatus = (s: ProviderTxStatus): TransactionStatus => s;
@@ -263,7 +266,7 @@ async function createOperation(
             errorCode: result.errorCode,
             errorMessage: result.errorMessage,
           });
-    await pollOnce().catch(() => undefined);
+    inBackground(pollOnce());
     return { transaction: updated, replayed: false };
   } catch (error) {
     const appError = error instanceof AppError ? error : new AppError("PROVIDER_ERROR", "The provider request failed.");
@@ -278,7 +281,7 @@ async function createOperation(
       errorCode: appError.code,
       errorMessage: appError.message,
     });
-    await pollOnce().catch(() => undefined);
+    inBackground(pollOnce());
     throw appError;
   }
 }
@@ -374,12 +377,15 @@ export async function simulateTransaction(ctx: KeyContext, id: string, outcome: 
     throw new AppError("INVALID_REQUEST", `Transaction is already ${t.status.toLowerCase()}.`, { status: 409 });
   }
   const status: TransactionStatus = outcome === "completed" ? "COMPLETED" : "FAILED";
-  const updated = await recordStatus(t, status, "sandbox_simulation", { outcome }, outcome === "failed" ? { errorCode: "TRANSACTION_FAILED", errorMessage: "Payment declined (simulated)" } : {});
-  await pollOnce().catch(() => undefined);
-  return updated;
+  const { transaction, won } = await settle(t, status, "sandbox_simulation", { outcome }, outcome === "failed" ? { errorCode: "TRANSACTION_FAILED", errorMessage: "Payment declined (simulated)" } : {});
+  if (!won) throw new AppError("INVALID_REQUEST", `Transaction is already ${transaction.status.toLowerCase()}.`, { status: 409 });
+  inBackground(pollOnce());
+  return transaction;
 }
 
 // ---- Reconciliation with the provider -----------------------------------------
+
+const STALE_PAYMENT_MS = 24 * 60 * 60 * 1000;
 
 const needsSync = (t: Transaction) => t.environment === "LIVE" && Boolean(t.providerTransactionId) && (t.status === "PENDING" || t.status === "PROCESSING");
 
@@ -409,7 +415,7 @@ export async function syncFromProvider(t: Transaction, source: string): Promise<
   if (result.status === "PROCESSING") return { transaction: t, reached: true };
 
   const failed = result.status === "FAILED" || result.status === "CANCELLED";
-  const transaction = await settle(t, result.status, source, { provider_status: result.status.toLowerCase() }, failed ? {
+  const { transaction } = await settle(t, result.status, source, { provider_status: result.status.toLowerCase() }, failed ? {
     errorCode: "TRANSACTION_FAILED",
     errorMessage: result.status === "CANCELLED" ? "The payment was cancelled." : t.type === "TRANSFER" ? "The transfer failed." : "The payment was not completed.",
   } : {});
@@ -426,7 +432,13 @@ export async function reconcileLive(limit = 25, olderThanMs = 60_000) {
   });
   let settled = 0;
   for (const t of rows) {
-    const { transaction } = await syncFromProvider(t, "reconcile");
+    let { transaction } = await syncFromProvider(t, "reconcile");
+    // A hosted payment page that nobody completed within a day is over: close it (after the
+    // provider had one last chance to say otherwise, just above). Transfers are never expired —
+    // their funds stay reserved until the provider or an administrator settles them.
+    if (transaction.status === "PENDING" && transaction.type === "PAYMENT" && Date.now() - transaction.createdAt.getTime() > STALE_PAYMENT_MS) {
+      transaction = (await settle(transaction, "CANCELLED", "expiry", { reason: "not completed within 24 hours" }, { errorCode: "TRANSACTION_FAILED", errorMessage: "The payment was not completed in time." })).transaction;
+    }
     if (transaction.status !== t.status) settled++;
   }
   return { checked: rows.length, settled };
@@ -441,7 +453,7 @@ export async function resolveManually(id: string, outcome: "completed" | "failed
   if (t.environment !== "LIVE") throw new AppError("INVALID_REQUEST", "Only LIVE transactions can be resolved manually.");
   if (t.status !== "PENDING" && t.status !== "PROCESSING") throw new AppError("CONFLICT", `Transaction is already ${t.status.toLowerCase()}.`);
   const status: TransactionStatus = outcome === "completed" ? "COMPLETED" : "FAILED";
-  const updated = await settle(t, status, "admin", { note }, outcome === "failed" ? { errorCode: "TRANSACTION_FAILED", errorMessage: "The transaction did not complete." } : {});
+  const { transaction: updated } = await settle(t, status, "admin", { note }, outcome === "failed" ? { errorCode: "TRANSACTION_FAILED", errorMessage: "The transaction did not complete." } : {});
   await audit({ action: "admin.transaction_resolved", actorUserId: actor.userId, ip: actor.ip, metadata: { transaction_id: id, outcome, note } });
   return updated;
 }

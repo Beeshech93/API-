@@ -8,12 +8,13 @@ import { checkProviders } from "@/services/provider.service";
 import { purgeOldCounters } from "@/services/ratelimit.service";
 import { reconcileLive } from "@/services/payment.service";
 import { reconcileFundings } from "@/services/funding.service";
+import { purgeOldRecords } from "@/services/retention.service";
 
 export const internalCronRouter = Router();
 
 // Daily maintenance (Vercel Hobby allows one cron run per day): retry failed
 // webhook deliveries, refresh provider health, settle in-flight LIVE transactions
-// with the provider, purge old rate-limit counters.
+// with the provider, purge old rate-limit counters and operational logs (90 days).
 // Vercel sends `Authorization: Bearer $CRON_SECRET`; anything else is rejected.
 internalCronRouter.get(
   "/webhook-delivery",
@@ -27,6 +28,7 @@ internalCronRouter.get(
     const purged = await purgeOldCounters();
     const reconciled = await reconcileLive();
     const fundings = await reconcileFundings();
-    res.json({ success: true, ...deliveries, purged_counters: purged, reconciled, fundings });
+    const retention = await purgeOldRecords();
+    res.json({ success: true, ...deliveries, purged_counters: purged, reconciled, fundings, retention });
   })
 );

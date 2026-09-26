@@ -1,7 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { AppError } from "@/utils/errors";
 import { clientIp } from "@/utils/ip";

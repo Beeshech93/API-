@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { useErrorMessage, useT } from "@/lib/i18n";
@@ -15,7 +16,9 @@ interface Detail {
   logs: { request_id: string; endpoint: string; method: string; status_code: number; created_at: string }[];
 }
 
-export default function ClientDetail({ params }: { params: { id: string } }) {
+export default function ClientDetail() {
+  // Next 15 hands route params to pages as a promise; a client component reads them with this hook.
+  const params = useParams<{ id: string }>();
   const t = useT();
   const errorMessage = useErrorMessage();
   const [d, setD] = useState<Detail | null>(null);

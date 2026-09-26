@@ -183,7 +183,11 @@ export default function KycPage() {
                 <p className="text-sm font-medium text-navy">{t(`kyc.doc.${type}`)}</p>
                 <Badge value={has(type) ? "active" : "pending"} label={has(type) ? t("kyc.uploaded") : t("kyc.missing")} />
               </div>
-              {previews[type] && /* eslint-disable-next-line @next/next/no-img-element */ <img src={previews[type]} alt="" className="mt-3 h-28 w-full object-cover rounded-lg border border-slate-200" />}
+              {previews[type] && (
+                // A local preview of the photo just chosen (a blob: URL), which next/image can't optimise.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={previews[type]} alt="" className="mt-3 h-28 w-full object-cover rounded-lg border border-slate-200" />
+              )}
               {!locked && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <input ref={(el) => { inputs.current[type] = el; }} type="file" accept="image/*" capture={type === "selfie" ? "user" : undefined} className="hidden" onChange={(e) => upload(type, e.target.files?.[0])} />

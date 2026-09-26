@@ -35,7 +35,7 @@ import {
 // page); transfers work on both networks. The environment (sandbox / live) is
 // decided by the credentials the administrator saved.
 
-const TIMEOUT_MS = 20_000;
+const TIMEOUT_MS = 15_000; // token + call + one re-auth stays inside the 60 s function limit
 const TOKEN_MARGIN_MS = 60_000;
 const MAX_TOKEN_LIFETIME_MS = 55 * 60_000; // the docs disagree (1h vs 24h): never trust more than an hour
 const MAX_PAYMENT_HTG = 75_000;

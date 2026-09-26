@@ -51,31 +51,39 @@ function respond(res: Response, session: auth.Session, status = 200) {
 
 const meta = (req: Request) => ({ ip: clientIp(req), userAgent: req.headers["user-agent"] });
 
-authRouter.use(ipRateLimit(30, "auth"));
+// Each route has its own counter: the portal refreshes its session on every page load, which
+// must not eat into the (much stricter) allowance for signing in or creating accounts.
+const limit = {
+  signup: ipRateLimit(10, "auth-signup"),
+  login: ipRateLimit(20, "auth-login"),
+  refresh: ipRateLimit(180, "auth-refresh"),
+  logout: ipRateLimit(60, "auth-logout"),
+  me: ipRateLimit(180, "auth-me"),
+};
 
-authRouter.post("/signup", asyncHandler(async (req, res) => {
+authRouter.post("/signup", limit.signup, asyncHandler(async (req, res) => {
   respond(res, await auth.signup(signupSchema.parse(req.body), meta(req)), 201);
 }));
 
-authRouter.post("/login", asyncHandler(async (req, res) => {
+authRouter.post("/login", limit.login, asyncHandler(async (req, res) => {
   respond(res, await auth.login(loginSchema.parse(req.body), meta(req)));
 }));
 
-authRouter.post("/refresh", asyncHandler(async (req, res) => {
+authRouter.post("/refresh", limit.refresh, asyncHandler(async (req, res) => {
   assertTrustedOrigin(req);
   const token = readCookie(req, COOKIE);
   if (!token) throw new AppError("UNAUTHORIZED", "No session.");
   respond(res, await auth.refresh(token, meta(req)));
 }));
 
-authRouter.post("/logout", asyncHandler(async (req, res) => {
+authRouter.post("/logout", limit.logout, asyncHandler(async (req, res) => {
   assertTrustedOrigin(req);
   await auth.logout(readCookie(req, COOKIE));
   res.clearCookie(COOKIE, COOKIE_OPTIONS);
   res.json({ success: true });
 }));
 
-authRouter.get("/me", requireUser, asyncHandler(async (req, res) => {
+authRouter.get("/me", limit.me, requireUser, asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) throw new AppError("UNAUTHORIZED", "Invalid session.");
   res.json({ success: true, user: { id: user.id, email: user.email, name: user.name, role: user.role, clientId: user.clientId } });

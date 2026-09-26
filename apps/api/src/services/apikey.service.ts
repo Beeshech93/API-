@@ -26,10 +26,6 @@ export interface AuthenticatedKey {
 
 // A key belongs to one API: receiving payments or sending money. What each may hold:
 export type NewKeyCategory = "RECEIVE" | "SEND";
-export const CATEGORY_PERMISSIONS: Record<NewKeyCategory, Permission[]> = {
-  RECEIVE: ["payments:read", "payments:create", "transactions:read", "balance:read", "webhooks:manage"],
-  SEND: ["transfers:read", "transfers:create", "transactions:read", "balance:read", "webhooks:manage"],
-};
 export const DEFAULT_CATEGORY_PERMISSIONS: Record<NewKeyCategory, Permission[]> = {
   RECEIVE: ["payments:read", "payments:create", "transactions:read", "balance:read"],
   SEND: ["transfers:read", "transfers:create", "transactions:read", "balance:read"],

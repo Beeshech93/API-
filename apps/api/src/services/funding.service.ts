@@ -201,7 +201,14 @@ export async function reconcileFundings(limit = 25, olderThanMs = 60_000) {
     take: limit,
   });
   let settled = 0;
-  for (const f of rows) if ((await syncFunding(f)).funding.status !== f.status) settled++;
+  for (const f of rows) {
+    let { funding } = await syncFunding(f);
+    // A hosted payment page nobody completed within a day is over (the provider had its say just above).
+    if (funding.status === "PENDING" && Date.now() - funding.createdAt.getTime() > 24 * 60 * 60 * 1000) {
+      funding = (await settle(funding, "FAILED", { reviewNote: "The payment was not completed in time." })).funding;
+    }
+    if (funding.status !== f.status) settled++;
+  }
   return { checked: rows.length, settled };
 }
 

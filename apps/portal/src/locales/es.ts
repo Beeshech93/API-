@@ -6,7 +6,7 @@ const es: Record<MessageKey, string> = {
   "common.view": "Ver", "common.empty": "Aún no hay nada.",
   "nav.docs": "Documentación", "nav.dashboard": "Panel", "nav.signIn": "Iniciar sesión", "nav.signOut": "Cerrar sesión", "nav.apiKeys": "Claves API",
   "nav.transactions": "Transacciones", "nav.webhooks": "Webhooks", "nav.apiLogs": "Logs de API", "nav.usage": "Uso",
-  "nav.settings": "Configuración", "nav.support": "Soporte","nav.startNow": "Empezar",
+  "nav.settings": "Configuración", "nav.support": "Soporte",
   "auth.signupTitle": "Crea tu cuenta", "auth.name": "Nombre", "auth.email": "Correo electrónico", "auth.password": "Contraseña",
   "auth.passwordHint": "Al menos 10 caracteres.", "auth.createAccount": "Crear cuenta", "auth.creating": "Creando cuenta…",
   "auth.haveAccount": "¿Ya tienes una cuenta?", "auth.signInLink": "Inicia sesión", "auth.signinTitle": "Iniciar sesión", "auth.signingIn": "Iniciando sesión…",
@@ -43,8 +43,6 @@ const es: Record<MessageKey, string> = {
   "usage.history": "Historial mensual", "usage.period": "Período", "usage.empty": "Aún no hay uso.",
 
 
-
-
   "settings.profile": "Perfil", "settings.language": "Idioma",
   "support.subtitle": "Estamos aquí para ayudarte a integrar.", "support.tip": "Incluye el request_id de la llamada que falla: nos permite rastrearla de extremo a extremo.",
   "support.email": "Correo", "support.noEmail": "Los datos de contacto de soporte se publicarán aquí.",
@@ -53,8 +51,8 @@ const es: Record<MessageKey, string> = {
   "admin.systemStatus": "Estado del sistema", "admin.createClient": "Crear cliente",
   "admin.account": "Cuenta", "admin.suspend": "Suspender", "admin.reactivate": "Reactivar", "admin.confirmSuspend": "¿Suspender a este cliente? Sus claves API dejarán de funcionar de inmediato.",
   "admin.client": "Cliente",
-  "admin.requestLimit": "Solicitudes / mes", "admin.maxKeys": "Máx. claves API", "admin.rateLimit": "Solicitudes LIVE por minuto", "admin.feeOverride": "Comisión específica (bps)",
-  "admin.features": "Características (códigos separados por comas)",   "admin.testConnection": "Probar conexión", "admin.credMissing": "no configuradas", "admin.detail": "Detalle",   "admin.errorRate": "Tasa de error", "admin.refresh": "Actualizar", "admin.responseTime": "Tiempo de respuesta", "admin.lastSuccess": "Último éxito", "admin.lastChecked": "Última comprobación",
+"admin.rateLimit": "Solicitudes LIVE por minuto",
+"admin.testConnection": "Probar conexión","admin.errorRate": "Tasa de error", "admin.refresh": "Actualizar", "admin.responseTime": "Tiempo de respuesta", "admin.lastSuccess": "Último éxito", "admin.lastChecked": "Última comprobación",
   "admin.suspicious": "Actividad sospechosa (última hora)", "admin.reason": "Motivo", "admin.count": "Cantidad", "admin.noSuspicious": "No se detectó actividad sospechosa.",
   "admin.failedLogins": "Inicios de sesión fallidos repetidos", "admin.badKeys": "Claves API rechazadas repetidas", "admin.audit": "Registro de auditoría", "admin.action": "Acción",
   "admin.feesTitle": "Comisiones y límites", "admin.feesSubtitle": "La comisión se calcula y se guarda antes de ejecutar cada operación.",
@@ -63,9 +61,7 @@ const es: Record<MessageKey, string> = {
   "con.title": "Probar", "con.intro": "Pega una de tus claves API de PRUEBA. Esto llama a la API real en modo sandbox, igual que tu integración.",
   "con.key": "Clave API de PRUEBA", "con.provider": "Proveedor", "con.amount": "Monto (HTG)", "con.create": "Crear pago", "con.success": "Simular éxito",
   "con.failure": "Simular fallo", "con.refresh": "Actualizar estado", "con.phone": "Teléfono (números de prueba abajo)",
-  "docs.gettingStarted": "Primeros pasos", "docs.authentication": "Autenticación", "docs.payments": "Pagos", "docs.webhooks": "Webhooks", "docs.errors": "Errores",
   "docs.tryIt": "Probar", "docs.indexTitle": "Documentación de la API de HaitiPay", "docs.indexBody": "Todo lo necesario para integrar: autenticación, endpoints, webhooks, errores y sandbox. Prueba la consola con una clave API de PRUEBA.",
-  "docs.quote": "Cotización y comisiones", "docs.sandbox": "Sandbox", "docs.limits": "Límites de uso",
   "land.hero.title": "Una sola API para MonCash y NatCash.", "land.hero.sub": "Conecta tu aplicación a pagos y transferencias en Haití con una API simple, segura y lista para integrar.",
   "land.cta.start": "Empezar ahora", "land.cta.docs": "Ver la documentación",
   "land.how.title": "Cómo funciona", "land.how.1t": "Crea tu cuenta", "land.how.1b": "Regístrate y obtén tu clave API.",
@@ -104,7 +100,6 @@ const es: Record<MessageKey, string> = {
   "doc.keys.title": "Claves API",
   "doc.keys.body": "Las claves hp_test_… usan el sandbox y nunca mueven dinero real. Las claves hp_live_… requieren que el acceso LIVE esté activado en tu cuenta. Cada clave tiene permisos (mínimo privilegio): payments:read, payments:create, transfers:read, transfers:create, balance:read, transactions:read, webhooks:manage. Puedes revocar o regenerar una clave en cualquier momento. Una cuenta se configura para recibir pagos, enviar dinero o ambos, y sus claves solo pueden llevar los permisos que corresponden. Las claves son por API: una para recibir pagos y otra para enviar dinero.",
 
-
   "doc.payments.title": "Pagos",
   "doc.payments.body": "Crea un pago para un cliente. Con una clave de PRUEBA queda pendiente hasta que lo simules. Con una clave LIVE la respuesta incluye payment_url: envía al cliente a esa dirección para pagar y espera el webhook payment.completed (o consulta la transacción); nunca entregues un pedido solo porque el cliente volvió. success_url y error_url (opcionales) indican adónde vuelve el cliente. El encabezado Idempotency-Key es obligatorio: repetir una solicitud con la misma clave devuelve la transacción original y nunca crea un segundo pago.",
   "doc.transfers.title": "Transferencias",
@@ -141,7 +136,6 @@ const es: Record<MessageKey, string> = {
   "doc.n4": "PROVIDER_TIMEOUT (queda en proceso)",
   "doc.n5": "cualquier otro número: queda pendiente",
   "con.onlyTest": "Solo se pueden usar claves de PRUEBA (hp_test_…) desde el navegador.",
-  "admin.cfg.title": "Conexión manual",
   "admin.cfg.subtitle": "Ingresa aquí las credenciales del proveedor. Se cifran, nunca se vuelven a mostrar y nunca se envían a ningún cliente: solo se ven los últimos 4 caracteres.",
   "admin.cfg.name": "Nombre visible (solo admins)",
   "admin.cfg.apiUrl": "URL de la API",
@@ -255,14 +249,12 @@ const es: Record<MessageKey, string> = {
   "doc.receive.body": "Todo lo necesario para cobrar a tus clientes está bajo /api/v1/receive/{moncash|natcash}. Solo contiene pagos — crearlos, leerlos y listarlos — más sus transacciones y el saldo. Requiere una clave creada para esta API (permisos payments:*). Las rutas originales /api/v1/{network}/… siguen funcionando para las integraciones existentes.",
   "doc.send.title": "API de envío",
   "doc.send.body": "Todo lo necesario para pagar dinero está bajo /api/v1/send/{moncash|natcash}. Solo contiene transferencias — crearlas, leerlas y listarlas — más sus transacciones y el saldo. Requiere una clave creada para esta API (permisos transfers:*). Los envíos usan tu saldo disponible.",
-
   "keys.cat.receive.desc": "Claves de la API de recepción (/api/v1/receive). Úsalas en tu servidor para cobrar a tus clientes.",
   "keys.cat.send.desc": "Claves de la API de envío (/api/v1/send). Úsalas en tu servidor para pagar a billeteras MonCash y NatCash.",
   "keys.cat.receive.create": "Crear una clave de recepción",
   "keys.cat.send.create": "Crear una clave de envío",
   "keys.older.title": "Claves anteriores (ambas APIs)",
   "keys.older.body": "Estas claves se crearon antes de separarlas por categoría y aún pueden usar ambas APIs. Regenerar una la deja igual; reemplázala cuando puedas por una clave de cada tipo.",
-
   "nav.kyc": "Verificación",
   "admin.kyc": "Verificación (KYC)",
   "admin.pendingKyc": "Verificaciones pendientes",

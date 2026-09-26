@@ -260,6 +260,8 @@ model Transaction {
   @@unique([clientId, environment, idempotencyKey])
   @@index([clientId, createdAt])
   @@index([providerTransactionId])
+  // Balance and reservation queries group a client's transactions by environment and status.
+  @@index([clientId, environment, status])
   @@map("transactions")
 }
 
@@ -466,6 +468,7 @@ model Funding {
   @@index([clientId, createdAt])
   @@index([providerTransactionId])
   @@index([status])
+  @@index([clientId, environment, status])
   @@map("fundings")
 }
 

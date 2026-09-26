@@ -5,6 +5,7 @@ import { env } from "@/config/env";
 import { AppError } from "@/utils/errors";
 import { signAccessToken } from "@/utils/jwt";
 import { audit } from "@/services/audit.service";
+import { hit, peek } from "@/services/ratelimit.service";
 
 const BCRYPT_COST = 12;
 // Compared against when the email is unknown, so login timing doesn't reveal
@@ -62,10 +63,24 @@ export async function signup(input: { email: string; password: string; name: str
   return issueSession({ id: user.id, email: user.email, name: user.name, role: user.role, clientId: user.clientId }, meta);
 }
 
+// After this many wrong passwords for one account, further attempts are refused for the rest of
+// the 15-minute window — whatever IP they come from — so a password can't be guessed slowly
+// from many addresses.
+const LOGIN_FAILURES = 10;
+const LOGIN_WINDOW_SECONDS = 15 * 60;
+const failureKey = (email: string) => `login-fail:${crypto.createHash("sha256").update(email).digest("hex")}`;
+
 export async function login(input: { email: string; password: string }, meta: SessionMeta): Promise<Session> {
+  const email = input.email.toLowerCase();
+  if ((await peek(failureKey(email), LOGIN_WINDOW_SECONDS)) >= LOGIN_FAILURES) {
+    const windowMs = LOGIN_WINDOW_SECONDS * 1000;
+    const retryAfter = Math.max(1, Math.ceil((Math.floor(Date.now() / windowMs) * windowMs + windowMs - Date.now()) / 1000));
+    throw new AppError("RATE_LIMIT_EXCEEDED", "Too many failed sign-in attempts. Try again later.", { retryAfter });
+  }
   const user = await prisma.user.findUnique({ where: { email: input.email.toLowerCase() }, include: { client: true } });
   const valid = await bcrypt.compare(input.password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !valid) {
+    await hit(failureKey(email), LOGIN_FAILURES, LOGIN_WINDOW_SECONDS);
     await audit({ action: "auth.login_failed", ip: meta.ip, metadata: { email: input.email.toLowerCase() } });
     throw new AppError("UNAUTHORIZED", "Invalid email or password.");
   }

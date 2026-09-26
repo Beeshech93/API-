@@ -3,24 +3,26 @@ import net from "net";
 import { env } from "@/config/env";
 import { AppError } from "@/utils/errors";
 
-function isPrivateIPv4(ip: string): boolean {
-  const [a, b] = ip.split(".").map(Number);
-  return (
-    a === 10 ||
-    a === 127 ||
-    a === 0 ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 100 && b >= 64 && b <= 127)
-  );
+// Everything that is not a public internet address: loopback, private, link-local (cloud
+// metadata lives at 169.254.169.254), carrier-grade NAT, documentation/test ranges, multicast,
+// reserved, unique-local IPv6, and the IPv6 forms that embed an IPv4 address. IPv4-mapped IPv6
+// addresses are checked against the IPv4 rules by BlockList itself.
+const NON_PUBLIC = new net.BlockList();
+for (const [network, prefix] of [
+  ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12],
+  ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24],
+  ["203.0.113.0", 24], ["224.0.0.0", 4], ["240.0.0.0", 4],
+] as const) NON_PUBLIC.addSubnet(network, prefix, "ipv4");
+NON_PUBLIC.addAddress("::", "ipv6");
+NON_PUBLIC.addAddress("::1", "ipv6");
+for (const [network, prefix] of [["64:ff9b::", 96], ["100::", 64], ["2001:db8::", 32], ["fc00::", 7], ["fe80::", 10], ["fec0::", 10], ["ff00::", 8]] as const) {
+  NON_PUBLIC.addSubnet(network, prefix, "ipv6");
 }
 
-function isPrivateIp(ip: string): boolean {
-  if (net.isIPv4(ip)) return isPrivateIPv4(ip);
-  const lower = ip.toLowerCase();
-  if (lower.startsWith("::ffff:")) return isPrivateIPv4(lower.slice(7));
-  return lower === "::1" || lower === "::" || lower.startsWith("fc") || lower.startsWith("fd") || lower.startsWith("fe80");
+export function isPrivateIp(ip: string): boolean {
+  const family = net.isIP(ip);
+  if (!family) return true; // not an address at all: never treat as safe
+  return NON_PUBLIC.check(ip, family === 4 ? "ipv4" : "ipv6");
 }
 
 // Webhook targets are chosen by clients, so without this a client could make

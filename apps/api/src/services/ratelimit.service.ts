@@ -27,6 +27,14 @@ export async function hit(key: string, limit: number, windowSeconds = 60): Promi
   return { allowed: count <= limit, count, limit, retryAfter };
 }
 
+// Current count of a window without counting a new hit.
+export async function peek(key: string, windowSeconds = 60): Promise<number> {
+  const windowMs = windowSeconds * 1000;
+  const windowStart = new Date(Math.floor(Date.now() / windowMs) * windowMs);
+  const row = await prisma.rateLimitCounter.findUnique({ where: { key_windowStart: { key, windowStart } } });
+  return row?.count ?? 0;
+}
+
 export async function purgeOldCounters(olderThanMinutes = 10): Promise<number> {
   const cutoff = new Date(Date.now() - olderThanMinutes * 60_000);
   const result = await prisma.rateLimitCounter.deleteMany({ where: { windowStart: { lt: cutoff } } });

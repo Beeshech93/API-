@@ -29,6 +29,32 @@ interface Key {
   created_at: string;
 }
 
+function KeyTable({ list, t, onRotate, onRevoke }: { list: Key[]; t: (key: string) => string; onRotate: (id: string) => void; onRevoke: (id: string) => void }) {
+  return (
+    <Table head={[t("keys.name"), t("keys.key"), t("keys.environment"), t("keys.permissions"), t("keys.created"), t("keys.lastUsed"), t("common.status"), ""]} empty={t("keys.empty")}>
+      {list.map((k) => (
+        <tr key={k.id}>
+          <td className="font-medium">{k.name}</td>
+          <td className="font-mono text-xs whitespace-nowrap">{k.masked_key}</td>
+          <td><Badge value={k.environment.toLowerCase()} label={t(`env.${k.environment.toLowerCase()}`)} /></td>
+          <td className="text-xs text-slate-500 max-w-[220px]">{k.permissions.join(", ")}</td>
+          <td className="whitespace-nowrap">{new Date(k.created_at).toLocaleDateString()}</td>
+          <td className="whitespace-nowrap">{k.last_used_at ? new Date(k.last_used_at).toLocaleString() : t("common.never")}</td>
+          <td><Badge value={k.status} label={t(`status.${k.status}`)} /></td>
+          <td className="whitespace-nowrap">
+            {k.status === "active" && (
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => onRotate(k.id)}>{t("keys.rotate")}</Button>
+                <Button variant="danger" onClick={() => onRevoke(k.id)}>{t("keys.revoke")}</Button>
+              </div>
+            )}
+          </td>
+        </tr>
+      ))}
+    </Table>
+  );
+}
+
 export default function ApiKeysPage() {
   const t = useT();
   const errorMessage = useErrorMessage();
@@ -102,30 +128,6 @@ export default function ApiKeysPage() {
     }
   }
 
-  const KeyTable = ({ list }: { list: Key[] }) => (
-    <Table head={[t("keys.name"), t("keys.key"), t("keys.environment"), t("keys.permissions"), t("keys.created"), t("keys.lastUsed"), t("common.status"), ""]} empty={t("keys.empty")}>
-      {list.map((k) => (
-        <tr key={k.id}>
-          <td className="font-medium">{k.name}</td>
-          <td className="font-mono text-xs whitespace-nowrap">{k.masked_key}</td>
-          <td><Badge value={k.environment.toLowerCase()} label={t(`env.${k.environment.toLowerCase()}`)} /></td>
-          <td className="text-xs text-slate-500 max-w-[220px]">{k.permissions.join(", ")}</td>
-          <td className="whitespace-nowrap">{new Date(k.created_at).toLocaleDateString()}</td>
-          <td className="whitespace-nowrap">{k.last_used_at ? new Date(k.last_used_at).toLocaleString() : t("common.never")}</td>
-          <td><Badge value={k.status} label={t(`status.${k.status}`)} /></td>
-          <td className="whitespace-nowrap">
-            {k.status === "active" && (
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => rotate(k.id)}>{t("keys.rotate")}</Button>
-                <Button variant="danger" onClick={() => revoke(k.id)}>{t("keys.revoke")}</Button>
-              </div>
-            )}
-          </td>
-        </tr>
-      ))}
-    </Table>
-  );
-
   const toggle = (p: string) => setPermissions((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]));
 
   return (
@@ -189,13 +191,13 @@ export default function ApiKeysPage() {
         <ErrorNote message={error} />
       </Card>
 
-      <KeyTable list={ofCategory(api_)} />
+      <KeyTable list={ofCategory(api_)} t={t} onRotate={rotate} onRevoke={revoke} />
 
       {olderKeys.length > 0 && (
         <div className="mt-8">
           <h2 className="font-semibold text-navy mb-1">{t("keys.older.title")}</h2>
           <p className="text-sm text-slate-500 mb-3 max-w-3xl">{t("keys.older.body")}</p>
-          <KeyTable list={olderKeys} />
+          <KeyTable list={olderKeys} t={t} onRotate={rotate} onRevoke={revoke} />
         </div>
       )}
     </div>

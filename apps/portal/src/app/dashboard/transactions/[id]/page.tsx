@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import { useErrorMessage, useT } from "@/lib/i18n";
 import { Badge, Card, ErrorNote, PageTitle } from "@/components/ui";
 import type { Tx } from "../page";
 
-export default function TransactionDetailPage({ params }: { params: { id: string } }) {
+export default function TransactionDetailPage() {
+  const params = useParams<{ id: string }>();
   const t = useT();
   const errorMessage = useErrorMessage();
   const [tx, setTx] = useState<(Tx & { events: { status: string; source: string; created_at: string }[] }) | null>(null);

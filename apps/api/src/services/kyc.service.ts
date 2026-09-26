@@ -2,7 +2,9 @@ import crypto from "crypto";
 import { Client, KycAccountType, KycDocumentType, KycProfile, KycStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/utils/prisma";
 import { AppError } from "@/utils/errors";
+import { env } from "@/config/env";
 import { assertPublicHttpUrl } from "@/utils/ssrf";
+import { safeRequest } from "@/utils/safeHttp";
 import { open, openBytes, seal, sealBytes, SealedBox } from "@/utils/secretBox";
 import { audit } from "@/services/audit.service";
 
@@ -19,7 +21,6 @@ import { audit } from "@/services/audit.service";
 //  - while a submission is under review, or once approved, the client can't change it.
 
 export const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024;
-export const ALL_DOCUMENT_TYPES: KycDocumentType[] = ["ID_FRONT", "ID_BACK", "SELFIE", "PROOF_OF_ADDRESS", "BUSINESS_REGISTRATION"];
 const ID_TYPES = ["national_id", "passport", "driver_license"] as const;
 export type IdType = (typeof ID_TYPES)[number];
 
@@ -106,23 +107,20 @@ export async function getClientKyc(clientId: string) {
   };
 }
 
-// Is the site up? Recorded for the reviewer; the body is never read or returned.
+// Is the site up? Recorded for the reviewer; the body is never returned. Ports other than the
+// standard web ones are refused, and the request can only reach public addresses.
 async function checkWebsite(url: string): Promise<number | null> {
   try {
     await assertPublicHttpUrl(url);
+    const { port } = new URL(url);
+    if (port && port !== "80" && port !== "443" && env.isProduction) throw new Error("port");
   } catch {
     throw new AppError("INVALID_REQUEST", "The website must be a public HTTPS address.");
   }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6_000);
   try {
-    const res = await fetch(url, { method: "GET", redirect: "manual", signal: controller.signal, headers: { "User-Agent": "HaitiPay-KYC/1.0" } });
-    await res.body?.cancel().catch(() => undefined);
-    return res.status;
+    return (await safeRequest(url, { method: "GET", headers: { "User-Agent": "HaitiPay-KYC/1.0" }, timeoutMs: 6_000, maxBytes: 1024 })).status;
   } catch {
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
