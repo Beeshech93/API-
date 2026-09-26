@@ -35,9 +35,10 @@ describe("document photos", () => {
 
 describe("which documents a submission needs", () => {
   it("depends on the kind of account and ID", () => {
-    expect(requiredDocuments("INDIVIDUAL", "national_id")).toEqual(["ID_FRONT", "SELFIE", "PROOF_OF_ADDRESS", "ID_BACK"]);
-    expect(requiredDocuments("INDIVIDUAL", "passport")).toEqual(["ID_FRONT", "SELFIE", "PROOF_OF_ADDRESS"]);
+    expect(requiredDocuments("INDIVIDUAL", "national_id")).toEqual(["ID_FRONT", "ID_BACK"]);
+    expect(requiredDocuments("INDIVIDUAL", "passport")).toEqual(["ID_FRONT"]);
     expect(requiredDocuments("BUSINESS", "driver_license")).toContain("BUSINESS_REGISTRATION");
+    expect(requiredDocuments("BUSINESS", "driver_license")).not.toContain("PROOF_OF_ADDRESS");
   });
 });
 

@@ -487,6 +487,7 @@ enum KycAccountType {
 enum KycDocumentType {
   ID_FRONT
   ID_BACK
+  // SELFIE and PROOF_OF_ADDRESS are no longer asked for or accepted; kept so documents already stored under them stay valid.
   SELFIE
   PROOF_OF_ADDRESS
   BUSINESS_REGISTRATION

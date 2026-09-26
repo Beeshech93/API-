@@ -307,8 +307,6 @@ const ht: Record<MessageKey, string> = {
   "kyc.docs.hint": "Foto klè ak bon limyè nan JPEG, PNG oswa WebP. Yo chifre yo epi se sèlman anplwaye verifikasyon ki ka louvri yo.",
   "kyc.doc.id_front": "Dokiman idantite — devan",
   "kyc.doc.id_back": "Dokiman idantite — dèyè",
-  "kyc.doc.selfie": "Selfi ak dokiman w nan men w",
-  "kyc.doc.proof_of_address": "Prèv adrès (fakti, relve labank…)",
   "kyc.doc.business_registration": "Anrejistreman biznis la",
   "kyc.upload": "Chwazi yon foto",
   "kyc.replace": "Ranplase",

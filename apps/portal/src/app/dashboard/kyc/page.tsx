@@ -117,7 +117,7 @@ export default function KycPage() {
   if (!kyc) return <p className="text-slate-500">{error ?? t("common.loading")}</p>;
 
   const has = (type: string) => kyc.documents.some((d) => d.type === type);
-  const required = form.account_type === "business" ? ["id_front", ...(form.id_type === "passport" ? [] : ["id_back"]), "selfie", "proof_of_address", "business_registration"] : ["id_front", ...(form.id_type === "passport" ? [] : ["id_back"]), "selfie", "proof_of_address"];
+  const required = form.account_type === "business" ? ["id_front", ...(form.id_type === "passport" ? [] : ["id_back"]), "business_registration"] : ["id_front", ...(form.id_type === "passport" ? [] : ["id_back"])];
   const allDocs = required.every(has);
   const detailsOk = form.full_name.trim().length >= 2 && form.date_of_birth && form.phone && form.address && form.city && form.website_url.startsWith("http") && form.business_description.trim().length >= 20 && (kyc.profile !== null || form.id_number.trim().length >= 4) && (form.account_type !== "business" || form.business_name.trim().length >= 2);
   const locked = !kyc.editable;
@@ -190,7 +190,7 @@ export default function KycPage() {
               )}
               {!locked && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <input ref={(el) => { inputs.current[type] = el; }} type="file" accept="image/*" capture={type === "selfie" ? "user" : undefined} className="hidden" onChange={(e) => upload(type, e.target.files?.[0])} />
+                  <input ref={(el) => { inputs.current[type] = el; }} type="file" accept="image/*" className="hidden" onChange={(e) => upload(type, e.target.files?.[0])} />
                   <Button variant="secondary" disabled={busy !== null} onClick={() => inputs.current[type]?.click()}>{busy === type ? t("kyc.uploading") : has(type) ? t("kyc.replace") : t("kyc.upload")}</Button>
                   {has(type) && <Button variant="ghost" disabled={busy !== null} onClick={() => remove(type)}>{t("kyc.remove")}</Button>}
                 </div>

@@ -136,5 +136,5 @@ export const kycProfileSchema = z
   });
 
 export const kycDocumentTypeSchema = z
-  .enum(["id_front", "id_back", "selfie", "proof_of_address", "business_registration"])
-  .transform((t) => t.toUpperCase() as "ID_FRONT" | "ID_BACK" | "SELFIE" | "PROOF_OF_ADDRESS" | "BUSINESS_REGISTRATION");
+  .enum(["id_front", "id_back", "business_registration"])
+  .transform((t) => t.toUpperCase() as "ID_FRONT" | "ID_BACK" | "BUSINESS_REGISTRATION");

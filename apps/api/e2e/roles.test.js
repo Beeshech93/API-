@@ -1,0 +1,113 @@
+// Integration test — run with `npm run test:e2e` (see e2e/README.md). Needs E2E_DATABASE_URL.
+const { DB_URL, SCHEMA, withSchema, ROOT } = require("./env");
+const { Client } = require("pg"); const crypto = require("crypto"); const fs = require("fs");
+const API = "http://localhost:4100", MOCK = "http://localhost:4300", S = SCHEMA;
+const WH_RECV = "whsec_receive_secret", WH_SEND = "whsec_send_secret";
+let pass = 0, fail = 0;
+const ok = (n, c, x) => { if (c) { pass++; console.log("  ok  ", n); } else { fail++; console.log("  FAIL", n, x !== undefined ? JSON.stringify(x).slice(0, 380) : ""); } };
+async function call(method, path, { token, key, body, headers = {}, rawBody } = {}) {
+  const res = await fetch(API + path, { method, headers: { "Content-Type": "application/json", ...(token || key ? { Authorization: `Bearer ${token || key}` } : {}), ...headers }, body: rawBody ?? (body ? JSON.stringify(body) : undefined) });
+  const t = await res.text(); let j; try { j = JSON.parse(t); } catch { j = t; } return { status: res.status, json: j, raw: t };
+}
+const mock = async (p, body) => (await fetch(MOCK + p, { method: body ? "POST" : "GET", body: body ? JSON.stringify(body) : undefined })).json();
+const signed = (payload, secret) => { const raw = JSON.stringify(payload), ts = Math.floor(Date.now() / 1000), evt = "evt_" + crypto.randomBytes(4).toString("hex");
+  return { rawBody: raw, headers: { "x-mock-timestamp": String(ts), "x-mock-event-id": evt, "x-mock-signature": "v1=" + crypto.createHmac("sha256", secret).update(`${ts}.${evt}.${raw}`).digest("hex") } }; };
+(async () => {
+  const db = new Client({ connectionString: DB_URL }); await db.connect();
+  await db.query(`TRUNCATE ${S}.fundings, ${S}.transactions, ${S}.audit_logs CASCADE`); await db.query(`DELETE FROM ${S}.platform_settings WHERE key LIKE 'provider_connection%'`);
+  const stamp = Date.now(), PW = "Str0ng-Passw0rd!";
+  const signup = (l, services) => call("POST", "/auth/signup", { body: { email: `${l}${stamp}@example.com`, password: PW, name: l, ...(services === undefined ? {} : { services }) } });
+  const adm = (await signup("radmin", ["receive", "send"])).json; await db.query(`UPDATE ${S}.users SET role='ADMIN' WHERE id=$1`, [adm.user.id]);
+  const A = (await call("POST", "/auth/login", { body: { email: `radmin${stamp}@example.com`, password: PW } })).json.access_token;
+  const mkKey = (token, env, perms) => call("POST", "/portal/api-keys", { token, body: { name: env + Math.random(), environment: env, permissions: perms } });
+  const caps = async id => (await db.query(`SELECT can_receive r, can_send s FROM ${S}.clients WHERE id=$1`, [id])).rows[0];
+
+  console.log("-- choosing what the account is for, at sign-up");
+  let r = await signup("nochoice"); ok("no choice -> 400", r.status === 400, r.json);
+  r = await signup("empty", []); ok("empty choice -> 400", r.status === 400, r.json);
+  r = await signup("bogus", ["trade"]); ok("unknown option -> 400", r.status === 400, r.json);
+  const R = (await signup("recvonly", ["receive"])); ok("receive only", R.status === 201 && JSON.stringify(await caps(R.json.user.clientId)) === '{"r":true,"s":false}', R.json);
+  const Sd = (await signup("sendonly", ["send", "send"])); ok("send only (duplicates collapse)", Sd.status === 201 && JSON.stringify(await caps(Sd.json.user.clientId)) === '{"r":false,"s":true}');
+  const B = (await signup("both", ["send", "receive"])); ok("both", B.status === 201 && JSON.stringify(await caps(B.json.user.clientId)) === '{"r":true,"s":true}');
+  r = await call("GET", "/portal/account", { token: R.json.access_token }); ok("/portal/account reports the services", r.json.services.receive === true && r.json.services.send === false, r.json);
+  r = await call("GET", "/portal/overview", { token: Sd.json.access_token }); ok("overview carries them too", r.json.services.receive === false && r.json.services.send === true, r.json.services);
+  r = await call("POST", "/admin/clients", { token: A, body: { name: "byadmin", email: `byadmin${stamp}@example.com`, password: PW, services: ["send"] } });
+  const byadmin = (await db.query(`SELECT can_receive r, can_send s FROM ${S}.clients ORDER BY created_at DESC LIMIT 1`)).rows[0]; ok("admin can create an account with chosen services", r.status === 201 && byadmin.r === false && byadmin.s === true, byadmin);
+  r = await call("POST", "/admin/clients", { token: A, body: { name: "dflt", email: `dflt${stamp}@example.com`, password: PW } });
+  ok("admin-created without a choice -> both", r.status === 201 && (await db.query(`SELECT can_receive r, can_send s FROM ${S}.clients ORDER BY created_at DESC LIMIT 1`)).rows[0].r === true);
+
+  console.log("-- receive-only account");
+  const RT = R.json.access_token, rk = await mkKey(RT, "TEST", ["payments:create", "payments:read", "transactions:read", "balance:read"]);
+  ok("payments permissions allowed", rk.status === 201, rk.json);
+  r = await mkKey(RT, "TEST", ["transfers:create"]); ok("transfers permissions refused (403)", r.status === 403 && /not set up to send/.test(r.json.error.message), r.json);
+  const pay = (key, k) => call("POST", "/api/v1/moncash/payments", { key, headers: { "Idempotency-Key": k }, body: { amount: 1000, currency: "HTG", phone: "50900000001" } });
+  r = await pay(rk.json.api_key, "r1"); ok("it can receive (sandbox payment completes)", r.status === 201 && r.json.status === "completed", r.json);
+  r = await call("POST", "/portal/funding", { token: RT, body: { method: "moncash", amount: 1000 } }); ok("recharging is for accounts that send: refused (403)", r.status === 403 && /not set up to send/.test(r.json.error.message), r.json);
+
+  console.log("-- send-only account");
+  const ST = Sd.json.access_token, sk = await mkKey(ST, "TEST", ["transfers:create", "transfers:read", "balance:read"]);
+  ok("transfers permissions allowed", sk.status === 201, sk.json);
+  r = await mkKey(ST, "TEST", ["payments:create"]); ok("payments permissions refused (403)", r.status === 403 && /not set up to receive/.test(r.json.error.message), r.json);
+  const xfer = (key, k, amount = 400) => call("POST", "/api/v1/moncash/transfers", { key, headers: { "Idempotency-Key": k }, body: { amount, currency: "HTG", phone: "50900000001", recipient: { first_name: "A", last_name: "B" } } });
+  r = await xfer(sk.json.api_key, "s0"); ok("no balance yet -> 402", r.status === 402, r.json);
+  r = await call("POST", "/api/v1/sandbox/fund", { key: sk.json.api_key, body: { amount: 5000 } }); ok("sandbox top-up gives simulated money (funded 5000)", r.status === 201 && r.json.balances[0].funded === 5000 && r.json.balances[0].available === 5000, r.json);
+  r = await xfer(sk.json.api_key, "s1"); ok("...so it can send in the sandbox", r.status === 201 && r.json.status === "completed", r.json);
+  r = await call("GET", "/api/v1/moncash/balance", { key: sk.json.api_key }); ok("balance 5000 - 400 - 4 fee = 4596", r.json.balances[0].available === 4596, r.json.balances);
+  r = await call("POST", "/api/v1/sandbox/fund", { key: sk.json.api_key, body: { amount: 0 } }); ok("bad amount -> 400", r.status === 400);
+  r = await call("POST", "/api/v1/sandbox/fund", { key: rk.json.api_key, body: { amount: 100 } }); ok("a receive-only key can't use sandbox funding (403)", r.status === 403);
+  r = await call("POST", "/portal/funding", { token: ST, body: { method: "moncash", amount: 1000 } }); ok("send-only account still needs LIVE access to recharge for real (403)", r.status === 403 && /KYC|LIVE access/.test(r.json.error.message), r.json);
+
+  console.log("-- request-time enforcement + admin changes");
+  r = await call("POST", `/admin/clients/${R.json.user.clientId}/services`, { token: A, body: { services: [] } }); ok("admin can't leave an account with nothing (400)", r.status === 400);
+  r = await call("POST", `/admin/clients/${R.json.user.clientId}/services`, { token: RT, body: { services: ["send"] } }); ok("client can't change services (403)", r.status === 403);
+  r = await call("POST", `/admin/clients/${R.json.user.clientId}/services`, { token: A, body: { services: ["send"] } }); ok("admin switches it to send-only", r.status === 200 && r.json.services.send === true && r.json.services.receive === false, r.json);
+  r = await pay(rk.json.api_key, "r2"); ok("its existing payments key stops working for payments (403)", r.status === 403 && /not set up to receive/.test(r.json.error.message), r.json);
+  r = await call("GET", `/admin/clients/${R.json.user.clientId}`, { token: A }); ok("client detail shows the services", r.json.client.services.send === true && r.json.client.services.receive === false, r.json.client);
+  r = await call("GET", "/admin/clients?search=recvonly", { token: A }); ok("client list shows them", r.json.clients[0].services.send === true);
+  ok("audited", (await db.query(`SELECT count(*)::int n FROM ${S}.audit_logs WHERE action='admin.client_services_changed'`)).rows[0].n === 1);
+
+  console.log("-- separate provider credentials: receive vs send");
+  const BT = B.json.access_token, bcid = B.json.user.clientId;
+  await db.query(`UPDATE ${S}.clients SET kyc_status='APPROVED' WHERE id=$1`, [bcid]);
+  await call("POST", `/admin/clients/${bcid}/live-access`, { token: A, body: { enabled: true } });
+  const lk = (await mkKey(BT, "LIVE", ["payments:create", "payments:read", "transactions:read", "balance:read"])).json.api_key;
+  const lks = (await mkKey(BT, "LIVE", ["transfers:create", "transfers:read", "transactions:read", "balance:read"])).json.api_key;
+  const lpay = (k) => call("POST", "/api/v1/moncash/payments", { key: lk, headers: { "Idempotency-Key": k }, body: { amount: 3000, currency: "HTG", phone: "50937123456" } });
+  const lx = (k, amount) => call("POST", "/api/v1/moncash/transfers", { key: lks, headers: { "Idempotency-Key": k }, body: { amount, currency: "HTG", phone: "50937123456", recipient: { first_name: "Melissa", last_name: "Francois" } } });
+  r = await lpay("l0"); ok("nothing configured: receiving fails closed (502) and says so", r.status === 502 && /Receiving payments is not configured/.test(r.json.error.message), r.json);
+  r = await call("GET", "/admin/providers/config?role=bogus", { token: A }); ok("unknown role -> 400", r.status === 400);
+  r = await call("GET", "/admin/providers/config?role=send", { token: BT }); ok("clients can't read credentials (403)", r.status === 403);
+  r = await call("PUT", "/admin/providers/config?role=receive", { token: A, body: { name: "Local Mock", apiUrl: MOCK, apiKey: "prov_test_user", secretKey: "sk_test_secret", webhookSecret: WH_RECV } });
+  ok("receive credentials saved", r.status === 200 && r.json.config.role === "receive" && r.json.config.configured, r.json);
+  r = await call("GET", "/admin/providers/config?role=send", { token: A }); ok("send has none of its own: inherits the receive account", r.json.config.configured === true && r.json.config.inherited === true, r.json.config);
+  await mock("/__reset", {});
+  r = await lpay("l1"); const P1 = r.json.transaction_id; ok("payment created with the receive account", r.status === 201, r.json);
+  const order = Object.keys((await mock("/__state")).orders).pop(); await mock("/__set", { id: order, status: "successful" });
+  let w = signed({ orderId: order }, WH_RECV); r = await call("POST", "/webhooks/provider", w); ok("notification signed with the receive secret is accepted", r.status === 200 && (await db.query(`SELECT status FROM ${S}.transactions WHERE id=$1`, [P1])).rows[0].status === "COMPLETED");
+  r = await lx("x1", 300); const X1 = r.json.transaction_id; let log = (await mock("/__state")).log;
+  ok("no send credentials -> the transfer uses the receive account", r.status === 201 && log.find(l => l.path === "/moncash/transfers").user === "prov_test_user", log.map(l => l.path + ":" + l.user));
+  r = await call("PUT", "/admin/providers/config?role=send", { token: A, body: { name: "Local Mock", apiUrl: MOCK, apiKey: "prov_send_user", secretKey: "sk_send_secret", webhookSecret: WH_SEND } });
+  ok("send credentials saved separately", r.status === 200 && r.json.config.role === "send" && r.json.config.inherited === false && r.json.config.api_key.endsWith("user"), r.json);
+  r = await call("GET", "/admin/providers/config?role=receive", { token: A }); ok("receive credentials untouched (still the receive account)", r.json.config.api_key.endsWith("user") && r.json.config.webhook_secret.endsWith("cret"));
+  ok("no secret in any response", !/sk_send_secret|sk_test_secret|whsec_/.test(JSON.stringify((await call("GET", "/admin/providers/config?role=send", { token: A })).json)));
+  await mock("/__reset", {});
+  r = await lx("x2", 500); const X2 = r.json.transaction_id; log = (await mock("/__state")).log;
+  ok("transfers now authenticate with the SEND account", r.status === 201 && log.find(l => l.path === "/token" && l.body.userID === "prov_send_user") && log.find(l => l.path === "/moncash/transfers").user === "prov_send_user", log.map(l => l.path + ":" + l.user));
+  r = await lpay("l2"); log = (await mock("/__state")).log;
+  ok("payments still use the RECEIVE account", r.status === 201 && log.find(l => l.path === "/moncash/token").user === "prov_test_user", log.map(l => l.path + ":" + l.user));
+  const trf = Object.keys((await mock("/__state")).transfers).pop(); await mock("/__set", { id: trf, status: "completed" });
+  w = signed({ type: "transfer.succeeded", transactionId: trf }, WH_SEND); r = await call("POST", "/webhooks/provider", w);
+  ok("notification signed with the send secret is accepted; the status is re-read with the send account", r.status === 200 && (await db.query(`SELECT status FROM ${S}.transactions WHERE id=$1`, [X2])).rows[0].status === "COMPLETED", r.json);
+  w = signed({ type: "transfer.succeeded", transactionId: trf }, "whsec_someone_else"); r = await call("POST", "/webhooks/provider", w); ok("a secret that belongs to neither account -> 401", r.status === 401);
+  r = await call("POST", "/admin/providers/check", { token: A }); const prim = r.json.providers.find(p => p.code === "primary");
+  ok("health check reports both accounts", prim.status === "operational" && /receive: connected/.test(prim.message) && /send: connected/.test(prim.message), prim);
+  ok("provider list says the send account is separate", prim.credentials === "configured" && prim.send_credentials === "configured", prim);
+  r = await call("DELETE", "/admin/providers/config?role=send", { token: A }); ok("removing the send credentials falls back to the receive account", r.status === 200 && r.json.config.inherited === true, r.json);
+  await mock("/__reset", {}); r = await lx("x3", 100); log = (await mock("/__state")).log;
+  ok("...and transfers use it again", r.status === 201 && log.find(l => l.path === "/moncash/transfers").user === "prov_test_user");
+  await call("DELETE", "/admin/providers/config?role=receive", { token: A });
+  r = await lx("x4", 100); ok("with nothing configured, sending fails closed and says so", r.status === 502 && /Sending money is not configured/.test(r.json.error.message), r.json);
+  ok("audit records which role changed", (await db.query(`SELECT count(*)::int n FROM ${S}.audit_logs WHERE action='admin.provider_config_saved' AND metadata->>'role'='send'`)).rows[0].n === 1);
+
+  await db.end(); console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(2); });

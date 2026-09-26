@@ -305,8 +305,6 @@ const en = {
   "kyc.docs.hint": "Clear, well-lit photos in JPEG, PNG or WebP. They are encrypted and only verification staff can open them.",
   "kyc.doc.id_front": "ID — front",
   "kyc.doc.id_back": "ID — back",
-  "kyc.doc.selfie": "Selfie holding your ID",
-  "kyc.doc.proof_of_address": "Proof of address (utility bill, bank statement…)",
   "kyc.doc.business_registration": "Business registration",
   "kyc.upload": "Choose photo",
   "kyc.replace": "Replace",

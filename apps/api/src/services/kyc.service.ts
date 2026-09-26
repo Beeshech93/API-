@@ -42,7 +42,7 @@ export interface ProfileInput {
 
 // Which documents a submission must include.
 export function requiredDocuments(accountType: KycAccountType, idType: string): KycDocumentType[] {
-  const docs: KycDocumentType[] = ["ID_FRONT", "SELFIE", "PROOF_OF_ADDRESS"];
+  const docs: KycDocumentType[] = ["ID_FRONT"];
   if (idType !== "passport") docs.push("ID_BACK");
   if (accountType === "BUSINESS") docs.push("BUSINESS_REGISTRATION");
   return docs;
@@ -102,7 +102,7 @@ export async function getClientKyc(clientId: string) {
     // The reason shown to the client after a rejection.
     review_note: client.kycStatus === "REJECTED" ? client.kycReviewNote : null,
     profile: profile ? publicProfile(profile) : null,
-    required_documents: (profile ? requiredDocuments(profile.accountType, profile.idType) : ["ID_FRONT", "SELFIE", "PROOF_OF_ADDRESS"]).map((t) => t.toLowerCase()),
+    required_documents: (profile ? requiredDocuments(profile.accountType, profile.idType) : ["ID_FRONT"]).map((t) => t.toLowerCase()),
     documents: docs.map((d) => ({ type: d.type.toLowerCase(), mime: d.mime, size: d.size, uploaded_at: d.updatedAt })),
   };
 }

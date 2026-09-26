@@ -307,8 +307,6 @@ const fr: Record<MessageKey, string> = {
   "kyc.docs.hint": "Photos nettes et bien éclairées en JPEG, PNG ou WebP. Elles sont chiffrées et seul le personnel de vérification peut les ouvrir.",
   "kyc.doc.id_front": "Pièce d'identité — recto",
   "kyc.doc.id_back": "Pièce d'identité — verso",
-  "kyc.doc.selfie": "Selfie avec votre pièce d'identité",
-  "kyc.doc.proof_of_address": "Justificatif de domicile (facture, relevé bancaire…)",
   "kyc.doc.business_registration": "Immatriculation de l'entreprise",
   "kyc.upload": "Choisir une photo",
   "kyc.replace": "Remplacer",

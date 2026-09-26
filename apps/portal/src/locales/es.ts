@@ -307,8 +307,6 @@ const es: Record<MessageKey, string> = {
   "kyc.docs.hint": "Fotos nítidas y bien iluminadas en JPEG, PNG o WebP. Se cifran y solo el personal de verificación puede abrirlas.",
   "kyc.doc.id_front": "Documento — anverso",
   "kyc.doc.id_back": "Documento — reverso",
-  "kyc.doc.selfie": "Selfie sosteniendo tu documento",
-  "kyc.doc.proof_of_address": "Comprobante de domicilio (recibo, estado de cuenta…)",
   "kyc.doc.business_registration": "Registro de la empresa",
   "kyc.upload": "Elegir foto",
   "kyc.replace": "Reemplazar",
