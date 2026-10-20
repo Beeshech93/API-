@@ -33,11 +33,12 @@ export async function createWebhook(clientId: string, actor: { userId: string; i
   return { ...serialize(webhook), secret };
 }
 
-export async function rotateWebhookSecret(clientId: string, id: string) {
+export async function rotateWebhookSecret(clientId: string, actor: { userId: string; ip?: string }, id: string) {
   const webhook = await prisma.webhook.findFirst({ where: { id, clientId } });
   if (!webhook) throw new AppError("NOT_FOUND", "Webhook not found.");
   const secret = newSecret();
   const updated = await prisma.webhook.update({ where: { id }, data: { secret: encryptWebhookSecret(secret) } });
+  await audit({ action: "webhook.secret_rotated", actorUserId: actor.userId, clientId, targetType: "webhook", targetId: updated.id, ip: actor.ip });
   return { ...serialize(updated), secret };
 }
 
