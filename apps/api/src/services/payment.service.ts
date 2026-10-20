@@ -100,9 +100,17 @@ async function emitStatus(t: Transaction, status: TransactionStatus, source: str
 }
 
 async function recordStatus(t: Transaction, status: TransactionStatus, source: string, raw: Record<string, unknown>, extra: Partial<Prisma.TransactionUpdateInput> = {}) {
-  const updated = await prisma.transaction.update({ where: { id: t.id }, data: { status, ...extra } });
-  await emitStatus(t, status, source, raw);
-  return updated;
+  // Provider creation responses can race with webhooks/polling. Never let a
+  // late response overwrite a terminal state, and emit an event only when this
+  // request actually wins the state transition.
+  const allowedStatuses: TransactionStatus[] = status === "PROCESSING" ? ["PENDING"] : ["PENDING", "PROCESSING"];
+  const { count } = await prisma.transaction.updateMany({
+    where: { id: t.id, status: { in: allowedStatuses } },
+    data: { status, ...extra },
+  });
+  const updated = await prisma.transaction.findUnique({ where: { id: t.id } });
+  if (count === 1) await emitStatus(t, status, source, raw);
+  return updated ?? t;
 }
 
 // Moves a transaction out of PENDING/PROCESSING exactly once. Two racers (a
