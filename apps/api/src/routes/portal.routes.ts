@@ -139,7 +139,7 @@ portalRouter.post("/webhooks", asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, ...(await webhooks.createWebhook(req.user!.clientId, actor(req), createWebhookSchema.parse(req.body))) });
 }));
 portalRouter.post("/webhooks/:id/rotate-secret", asyncHandler(async (req, res) => {
-  res.json({ success: true, ...(await webhooks.rotateWebhookSecret(req.user!.clientId, req.params.id)) });
+  res.json({ success: true, ...(await webhooks.rotateWebhookSecret(req.user!.clientId, actor(req), req.params.id)) });
 }));
 portalRouter.delete("/webhooks/:id", asyncHandler(async (req, res) => {
   await webhooks.deleteWebhook(req.user!.clientId, req.params.id);

@@ -233,12 +233,16 @@ export class LiveProvider implements PaymentProviderClient {
       ...(input.errorUrl ? { errorUrl: input.errorUrl } : {}),
       ...(hook ? { webhookUrl: hook } : {}),
       metadata: { transactionId: input.transactionId, ...(hook ? { webhookUrl: hook } : {}) },
-    });
+    }, true); // a timeout can hide a payment created by the provider
     const orderId = res.json.orderId;
-    if (res.status < 200 || res.status >= 300 || typeof orderId !== "string" || !orderId) {
+    if (res.status >= 400 && res.status < 500) {
       await noteFailure("createPayment", input.requestId, started, `create payment rejected: ${describe(res)}`);
-      // No hosted page came back, so the payer can never be charged: a clean failure.
       throw new AppError("PROVIDER_ERROR", "The payment could not be created.");
+    }
+    if (res.status < 200 || res.status >= 300 || typeof orderId !== "string" || !orderId) {
+      // A 5xx or malformed success may occur after the provider created the order.
+      await noteFailure("createPayment", input.requestId, started, `create payment outcome unknown: ${describe(res)}`);
+      throw new AppError("PROVIDER_TIMEOUT", "The provider did not confirm the payment.");
     }
     const redirectUrl = typeof res.json.redirectUrl === "string" ? res.json.redirectUrl : undefined;
     return { providerTransactionId: orderId, status: mapProviderStatus(res.json.status), redirectUrl };

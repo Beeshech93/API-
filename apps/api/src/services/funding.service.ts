@@ -114,14 +114,20 @@ export async function createFunding(client: { id: string; liveEnabled: boolean; 
 
   const reference = input.reference?.trim() ?? "";
   if (reference.length < 4) throw new AppError("INVALID_REQUEST", "Enter the transaction ID or reference of your payment (at least 4 characters).");
-  // The same proof can't be used to claim credit twice.
-  const duplicate = await prisma.funding.findFirst({
-    where: { method: input.method, reference: { equals: reference, mode: "insensitive" }, status: { in: ["PENDING", "COMPLETED"] } },
-  });
-  if (duplicate) throw new AppError("CONFLICT", "This reference has already been submitted.");
+  // Serialize submissions using the same normalized proof reference. A read-then-create
+  // check without a lock lets two concurrent requests submit the same receipt at once.
+  const created = await prisma.$transaction(async (tx) => {
+    const lockKey = `funding-reference:${input.method}:${reference.toLocaleLowerCase("en-US")}`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+    const duplicate = await tx.funding.findFirst({
+      where: { method: input.method, reference: { equals: reference, mode: "insensitive" }, status: { in: ["PENDING", "COMPLETED"] } },
+      select: { id: true },
+    });
+    if (duplicate) throw new AppError("CONFLICT", "This reference has already been submitted.");
 
-  const created = await prisma.funding.create({
-    data: { id: newFundingId(), clientId: client.id, method: input.method, amount: input.amount, reference, note: input.note?.trim() || null, requestId },
+    return tx.funding.create({
+      data: { id: newFundingId(), clientId: client.id, method: input.method, amount: input.amount, reference, note: input.note?.trim() || null, requestId },
+    });
   });
   await audit({ action: "funding.requested", clientId: client.id, targetType: "funding", targetId: created.id, metadata: { method: input.method, amount: input.amount } });
   return created;
@@ -148,7 +154,15 @@ async function createMoncashFunding(clientId: string, input: FundingInput, reque
     await logProviderCall({ providerCode: "moncash", operation: "createFunding", requestId, success: true, responseMs: Date.now() - started });
     return prisma.funding.update({ where: { id: created.id }, data: { providerTransactionId: result.providerTransactionId, paymentUrl: result.redirectUrl } });
   } catch (error) {
-    // No payment page exists, so nobody can have paid: a clean failure.
+    // A timeout or ambiguous provider response does not prove that no payment was
+    // created. Keep this funding pending for reconciliation/manual investigation.
+    if (error instanceof AppError && error.code === "PROVIDER_TIMEOUT") {
+      await prisma.funding.update({
+        where: { id: created.id },
+        data: { reviewNote: "Provider outcome unknown; investigate before closing this funding." },
+      });
+      throw error;
+    }
     await prisma.funding.update({ where: { id: created.id }, data: { status: "FAILED", reviewNote: "The payment could not be created." } });
     throw error instanceof AppError ? error : new AppError("PROVIDER_ERROR", "The payment could not be created.");
   }
@@ -176,7 +190,10 @@ async function settle(f: Funding, status: FundingStatus, data: { creditedAmount?
 // Asks the provider what happened to an automatic funding and applies it. Only the
 // provider's answer (fetched by us, never a request body) can credit a balance.
 export async function syncFunding(f: Funding): Promise<{ funding: Funding; reached: boolean }> {
-  if (f.method !== "MONCASH" || f.status !== "PENDING" || !f.providerTransactionId) return { funding: f, reached: true };
+  // Never query a live provider or apply its status to a TEST funding record.
+  if (f.environment !== "LIVE" || f.method !== "MONCASH" || f.status !== "PENDING" || !f.providerTransactionId) {
+    return { funding: f, reached: true };
+  }
   const started = Date.now();
   let result;
   try {
@@ -196,7 +213,7 @@ export async function syncFunding(f: Funding): Promise<{ funding: Funding; reach
 
 export async function reconcileFundings(limit = 25, olderThanMs = 60_000) {
   const rows = await prisma.funding.findMany({
-    where: { method: "MONCASH", status: "PENDING", providerTransactionId: { not: null }, updatedAt: { lt: new Date(Date.now() - olderThanMs) } },
+    where: { environment: "LIVE", method: "MONCASH", status: "PENDING", providerTransactionId: { not: null }, updatedAt: { lt: new Date(Date.now() - olderThanMs) } },
     orderBy: { createdAt: "asc" },
     take: limit,
   });
