@@ -4,15 +4,11 @@ import { prisma } from "@/utils/prisma";
 import { AppError } from "@/utils/errors";
 import { assertPublicHttpUrl } from "@/utils/ssrf";
 import { audit } from "@/services/audit.service";
+import { encryptWebhookSecret } from "@/utils/webhookSecret";
 
 export const WEBHOOK_EVENTS = [
-  "payment.pending",
-  "payment.processing",
-  "payment.completed",
-  "payment.failed",
-  "transfer.pending",
-  "transfer.completed",
-  "transfer.failed",
+  "payment.pending", "payment.processing", "payment.completed", "payment.failed",
+  "transfer.pending", "transfer.completed", "transfer.failed",
 ] as const;
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
@@ -30,10 +26,10 @@ export async function createWebhook(clientId: string, actor: { userId: string; i
   await assertPublicHttpUrl(input.url);
   const secret = newSecret();
   const webhook = await prisma.webhook.create({
-    data: { clientId, url: input.url, secret, events: input.events?.length ? input.events : [...WEBHOOK_EVENTS] },
+    data: { clientId, url: input.url, secret: encryptWebhookSecret(secret), events: input.events?.length ? input.events : [...WEBHOOK_EVENTS] },
   });
   await audit({ action: "webhook.created", actorUserId: actor.userId, clientId, targetType: "webhook", targetId: webhook.id, ip: actor.ip });
-  // The signing secret is returned only here; afterwards it can only be rotated.
+  // Return the plaintext signing secret only once; the database stores ciphertext.
   return { ...serialize(webhook), secret };
 }
 
@@ -41,8 +37,8 @@ export async function rotateWebhookSecret(clientId: string, id: string) {
   const webhook = await prisma.webhook.findFirst({ where: { id, clientId } });
   if (!webhook) throw new AppError("NOT_FOUND", "Webhook not found.");
   const secret = newSecret();
-  await prisma.webhook.update({ where: { id }, data: { secret } });
-  return { ...serialize(webhook), secret };
+  const updated = await prisma.webhook.update({ where: { id }, data: { secret: encryptWebhookSecret(secret) } });
+  return { ...serialize(updated), secret };
 }
 
 export async function deleteWebhook(clientId: string, id: string) {
@@ -53,9 +49,7 @@ export async function deleteWebhook(clientId: string, id: string) {
 
 export async function listDeliveries(clientId: string) {
   const rows = await prisma.webhookDelivery.findMany({
-    where: { webhook: { clientId } },
-    orderBy: { createdAt: "desc" },
-    take: 100,
+    where: { webhook: { clientId } }, orderBy: { createdAt: "desc" }, take: 100,
   });
   return rows.map((d) => ({
     id: d.id, event: d.event, transaction_id: d.transactionId, status: d.status.toLowerCase(),
@@ -66,21 +60,16 @@ export async function listDeliveries(clientId: string) {
 export async function redeliver(clientId: string, deliveryId: string) {
   const delivery = await prisma.webhookDelivery.findFirst({ where: { id: deliveryId, webhook: { clientId } } });
   if (!delivery) throw new AppError("NOT_FOUND", "Delivery not found.");
-  await prisma.webhookDelivery.create({
-    data: {
-      webhookId: delivery.webhookId, transactionId: delivery.transactionId, event: delivery.event,
-      payload: delivery.payload as Prisma.InputJsonValue,
-    },
-  });
+  await prisma.webhookDelivery.create({ data: {
+    webhookId: delivery.webhookId, transactionId: delivery.transactionId, event: delivery.event,
+    payload: delivery.payload as Prisma.InputJsonValue,
+  } });
 }
 
-// Queue one delivery per active webhook subscribed to the event. The HTTP call
-// itself happens in the delivery worker.
+// Queue one delivery per active webhook subscribed to the event. HTTP delivery is handled by the worker.
 export async function enqueueEvent(clientId: string, transactionId: string, event: WebhookEvent, data: Record<string, unknown>) {
   const webhooks = await prisma.webhook.findMany({ where: { clientId, active: true, events: { has: event } } });
   if (webhooks.length === 0) return;
   const payload = { event, ...data } as Prisma.InputJsonValue;
-  await prisma.webhookDelivery.createMany({
-    data: webhooks.map((w) => ({ webhookId: w.id, transactionId, event, payload })),
-  });
+  await prisma.webhookDelivery.createMany({ data: webhooks.map((w) => ({ webhookId: w.id, transactionId, event, payload })) });
 }
