@@ -96,7 +96,7 @@ export async function safeRequest(
       }
     );
     const timer = setTimeout(() => req.destroy(new AppError("PROVIDER_TIMEOUT", "The request timed out.")), timeoutMs);
-    req.on("timeout", () => req.destroy(new Error("timeout")));
+    req.on("timeout", () => req.destroy(new AppError("PROVIDER_TIMEOUT", "The request timed out.")));
     req.on("error", (error) => {
       clearTimeout(timer);
       reject(error);
