@@ -110,16 +110,41 @@ export async function refresh(refreshToken: string, meta: SessionMeta): Promise<
   }
 
   const user = record.user;
-  const session = await issueSession(
-    { id: user.id, email: user.email, name: user.name, role: user.role, clientId: user.clientId },
-    meta,
-    record.familyId
-  );
-  await prisma.refreshToken.update({
-    where: { id: record.id },
-    data: { revokedAt: new Date(), replacedById: session.refreshTokenId },
+  // Claim the old token atomically before issuing a replacement. Without a conditional
+  // update, two concurrent refresh requests can both observe it as active and mint
+  // two valid descendants from the same token.
+  const revokedAt = new Date();
+  const claimed = await prisma.refreshToken.updateMany({
+    where: { id: record.id, revokedAt: null, expiresAt: { gt: revokedAt } },
+    data: { revokedAt },
   });
-  return session;
+  if (claimed.count !== 1) {
+    // A concurrent request already consumed this token: treat it as replay and revoke
+    // every still-active token in the family.
+    await prisma.refreshToken.updateMany({
+      where: { familyId: record.familyId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await audit({ action: "auth.refresh_reuse_detected", actorUserId: record.userId, clientId: user.clientId, ip: meta.ip });
+    throw new AppError("UNAUTHORIZED", "Session expired. Please sign in again.");
+  }
+
+  try {
+    const session = await issueSession(
+      { id: user.id, email: user.email, name: user.name, role: user.role, clientId: user.clientId },
+      meta,
+      record.familyId
+    );
+    await prisma.refreshToken.update({
+      where: { id: record.id },
+      data: { replacedById: session.refreshTokenId },
+    });
+    return session;
+  } catch (error) {
+    // The old token is already consumed, so never make it usable again if issuing
+    // the replacement fails. The client can safely sign in again.
+    throw error;
+  }
 }
 
 export async function logout(refreshToken: string | undefined): Promise<void> {
