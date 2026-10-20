@@ -58,6 +58,12 @@ export async function safeRequest(
           size += chunk.length;
           if (size > maxBytes) {
             tooLarge = true;
+            // Reject before destroy(): destroying a response may emit "error" before "close",
+            // and that event must not replace the stable size-limit error with a socket error.
+            if (!settled) {
+              settled = true;
+              reject(new AppError("PROVIDER_ERROR", "The remote response exceeded the allowed size."));
+            }
             res.destroy();
             return;
           }
@@ -90,7 +96,7 @@ export async function safeRequest(
       }
     );
     const timer = setTimeout(() => req.destroy(new AppError("PROVIDER_TIMEOUT", "The request timed out.")), timeoutMs);
-    req.on("timeout", () => req.destroy(new Error("timeout")));
+    req.on("timeout", () => req.destroy(new AppError("PROVIDER_TIMEOUT", "The request timed out.")));
     req.on("error", (error) => {
       clearTimeout(timer);
       reject(error);
