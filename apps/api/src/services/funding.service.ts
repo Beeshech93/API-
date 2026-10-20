@@ -154,7 +154,15 @@ async function createMoncashFunding(clientId: string, input: FundingInput, reque
     await logProviderCall({ providerCode: "moncash", operation: "createFunding", requestId, success: true, responseMs: Date.now() - started });
     return prisma.funding.update({ where: { id: created.id }, data: { providerTransactionId: result.providerTransactionId, paymentUrl: result.redirectUrl } });
   } catch (error) {
-    // No payment page exists, so nobody can have paid: a clean failure.
+    // A timeout or ambiguous provider response does not prove that no payment was
+    // created. Keep this funding pending for reconciliation/manual investigation.
+    if (error instanceof AppError && error.code === "PROVIDER_TIMEOUT") {
+      await prisma.funding.update({
+        where: { id: created.id },
+        data: { reviewNote: "Provider outcome unknown; investigate before closing this funding." },
+      });
+      throw error;
+    }
     await prisma.funding.update({ where: { id: created.id }, data: { status: "FAILED", reviewNote: "The payment could not be created." } });
     throw error instanceof AppError ? error : new AppError("PROVIDER_ERROR", "The payment could not be created.");
   }
