@@ -47,15 +47,46 @@ export async function safeRequest(
       (res) => {
         const chunks: Buffer[] = [];
         let size = 0;
+        let settled = false;
+        let tooLarge = false;
+        const finish = (response: SafeResponse) => {
+          if (settled) return;
+          settled = true;
+          resolve(response);
+        };
         res.on("data", (chunk: Buffer) => {
           size += chunk.length;
-          if (size <= maxBytes) chunks.push(chunk);
-          else res.destroy(); // enough to know what it said
+          if (size > maxBytes) {
+            tooLarge = true;
+            res.destroy();
+            return;
+          }
+          chunks.push(chunk);
         });
-        const done = () => resolve({ status: res.statusCode ?? 0, text: Buffer.concat(chunks).toString("utf8") });
-        res.on("end", done);
-        res.on("close", done);
-        res.on("error", done);
+        res.on("end", () => {
+          if (tooLarge) {
+            if (!settled) {
+              settled = true;
+              reject(new AppError("PROVIDER_ERROR", "The remote response exceeded the allowed size."));
+            }
+            return;
+          }
+          finish({ status: res.statusCode ?? 0, text: Buffer.concat(chunks).toString("utf8") });
+        });
+        res.on("close", () => {
+          if (settled) return;
+          if (tooLarge) {
+            settled = true;
+            reject(new AppError("PROVIDER_ERROR", "The remote response exceeded the allowed size."));
+            return;
+          }
+          finish({ status: res.statusCode ?? 0, text: Buffer.concat(chunks).toString("utf8") });
+        });
+        res.on("error", (error) => {
+          if (settled) return;
+          settled = true;
+          reject(error);
+        });
       }
     );
     const timer = setTimeout(() => req.destroy(new AppError("PROVIDER_TIMEOUT", "The request timed out.")), timeoutMs);
