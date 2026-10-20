@@ -35,7 +35,7 @@ providerWebhookRouter.post(
       if (!reached) return res.status(503).json({ received: false });
     } else if (ids.length) {
       // Not an API transaction: it may be a balance recharge.
-      const funding = await prisma.funding.findFirst({ where: { method: "MONCASH", providerTransactionId: { in: ids } } });
+      const funding = await prisma.funding.findFirst({ where: { environment: "LIVE", method: "MONCASH", providerTransactionId: { in: ids } } });
       if (funding && !(await syncFunding(funding)).reached) return res.status(503).json({ received: false });
     }
     // Unknown ids are acknowledged too, so the provider doesn't keep retrying.
