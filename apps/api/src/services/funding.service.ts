@@ -190,7 +190,10 @@ async function settle(f: Funding, status: FundingStatus, data: { creditedAmount?
 // Asks the provider what happened to an automatic funding and applies it. Only the
 // provider's answer (fetched by us, never a request body) can credit a balance.
 export async function syncFunding(f: Funding): Promise<{ funding: Funding; reached: boolean }> {
-  if (f.method !== "MONCASH" || f.status !== "PENDING" || !f.providerTransactionId) return { funding: f, reached: true };
+  // Never query a live provider or apply its status to a TEST funding record.
+  if (f.environment !== "LIVE" || f.method !== "MONCASH" || f.status !== "PENDING" || !f.providerTransactionId) {
+    return { funding: f, reached: true };
+  }
   const started = Date.now();
   let result;
   try {
@@ -210,7 +213,7 @@ export async function syncFunding(f: Funding): Promise<{ funding: Funding; reach
 
 export async function reconcileFundings(limit = 25, olderThanMs = 60_000) {
   const rows = await prisma.funding.findMany({
-    where: { method: "MONCASH", status: "PENDING", providerTransactionId: { not: null }, updatedAt: { lt: new Date(Date.now() - olderThanMs) } },
+    where: { environment: "LIVE", method: "MONCASH", status: "PENDING", providerTransactionId: { not: null }, updatedAt: { lt: new Date(Date.now() - olderThanMs) } },
     orderBy: { createdAt: "asc" },
     take: limit,
   });
