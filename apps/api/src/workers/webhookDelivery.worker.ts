@@ -4,17 +4,14 @@ import { buildSignatureHeader } from "@/utils/hmac";
 import { safeRequest } from "@/utils/safeHttp";
 import { decryptWebhookSecret, encryptWebhookSecret, isEncryptedWebhookSecret } from "@/utils/webhookSecret";
 
-const BACKOFF_MS = [60_000, 5 * 60_000, 30 * 60_000, 2 * 60 * 60_000, 12 * 60 * 60_000];
-// `attempts` is the number of failed attempts after recording the current failure.
-// The first failure must use the first backoff (60 seconds), not skip to 5 minutes.
-const nextDelay = (attempts: number) => BACKOFF_MS[Math.min(Math.max(attempts - 1, 0), BACKOFF_MS.length - 1)];
+import { webhookRetryDelayMs } from "@/utils/webhookRetry";
 
 async function fail(id: string, previousAttempts: number, responseStatus: number | null, responseBody: string) {
   const attempts = previousAttempts + 1;
   await prisma.webhookDelivery.update({ where: { id }, data: {
     status: attempts >= env.webhook.maxAttempts ? "EXHAUSTED" : "PENDING", attempts,
     responseStatus: responseStatus ?? undefined, responseBody: responseBody.slice(0, 1000),
-    lastAttemptAt: new Date(), nextAttemptAt: new Date(Date.now() + nextDelay(attempts)),
+    lastAttemptAt: new Date(), nextAttemptAt: new Date(Date.now() + webhookRetryDelayMs(attempts)),
   } });
 }
 
