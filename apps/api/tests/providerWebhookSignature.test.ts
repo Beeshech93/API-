@@ -43,7 +43,7 @@ describe("provider webhook signature verification", () => {
   it("fails closed when the secret or required headers are missing", () => {
     const nowMs = Number(timestamp) * 1000;
     expect(verifyProviderWebhook(headersFor(), body, "", nowMs).ok).toBe(false);
-    expect(verifyProviderWebhook({} as NodeJS.Dict<string>, body, secret, nowMs).ok).toBe(false);
+    expect(verifyProviderWebhook({} as import("http").IncomingHttpHeaders, body, secret, nowMs).ok).toBe(false);
   });
 
   it("rejects an empty body", () => {
