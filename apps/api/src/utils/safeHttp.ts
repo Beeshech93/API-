@@ -58,6 +58,12 @@ export async function safeRequest(
           size += chunk.length;
           if (size > maxBytes) {
             tooLarge = true;
+            // Reject before destroy(): destroying a response may emit "error" before "close",
+            // and that event must not replace the stable size-limit error with a socket error.
+            if (!settled) {
+              settled = true;
+              reject(new AppError("PROVIDER_ERROR", "The remote response exceeded the allowed size."));
+            }
             res.destroy();
             return;
           }
