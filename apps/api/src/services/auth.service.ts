@@ -55,7 +55,7 @@ export async function signup(input: { email: string; password: string; name: str
   if (existing) throw new AppError("CONFLICT", "An account with that email already exists.");
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
-  let user;
+  let user: import("@prisma/client").User;
   try {
     user = await prisma.$transaction(async (tx) => {
       const client = await tx.client.create({ data: { name: input.name, canReceive: input.services.includes("receive"), canSend: input.services.includes("send") } });
